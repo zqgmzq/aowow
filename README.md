@@ -114,10 +114,10 @@ When you've created your admin account you are done.
 
 **Q: The Page appears white, without any styles.**  
 A: The static content is not being displayed. You are either using SSL and AoWoW is unable to detect it or STATIC_HOST is not defined poperly. Either way this can be fixed via config `php aowow --siteconfig`
-Probably you need to modify [13] and [18].
+Probably you need to modify [10] and [15].
 For example, if your project is in `/var/www/html/aowow`, hence you visit it with `http://localhost/aowow/`, you should put:
-- [13] localhost/aowow
-- [18] localhost/aowow/static
+- [10] localhost/aowow
+- [15] localhost/aowow/static
 
 **Q: Fatal error: Can't inherit abstract function \<functionName> (previously declared abstract in \<className>) in \<path>**  
 A: You are using cache optimization modules for php, that are in confict with each other. (Zend OPcache, XCache, ..) Disable all but one.
@@ -140,6 +140,8 @@ A: Whenever you try to view a new character, AoWoW needs to fetch it first. Sinc
 A: check your file config in `www-aowow/config/config.php`, if everything is correct, check if your password has **"#"** character contained in the password and replace it with the *encoded (URL) character* correspondent **"%23"**, do the same for special characters if you still get this error.  
 If you do not resolve, try to don't use **"#"** in your password.
 
+**Q: no gameobjects, aowow_objects table empty**  
+A: enable the full gorup mode running `SET sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));` and exrtact again the gameobjects with `php aowow --sql=objects`
 
 ## Thanks
 
