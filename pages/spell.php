@@ -1052,10 +1052,10 @@ class SpellPage extends GenericPage
             if (count($src) == 1 && $src[0] == 1)           // multiple trainer
             {
                 $list = DB::World()->selectCol('
-                    SELECT  cdt.CreatureId
-                    FROM    creature_default_trainer cdt
-                    JOIN    trainer_spell ts ON ts.TrainerId = cdt.TrainerId
-                    WHERE   ts.SpellId = ?d',
+                    SELECT    IF(t1.ID > 200000, t2.ID, t1.ID)
+                    FROM      npc_trainer t1
+                    LEFT JOIN npc_trainer t2 ON t2.SpellID = -t1.ID
+                    WHERE     t1.SpellID = ?d',
                     $this->typeId
                 );
             }
@@ -1544,7 +1544,7 @@ class SpellPage extends GenericPage
     private function createEffects(&$infobox, &$redButtons)
     {
         // proc data .. maybe use more information..?
-        $procData = DB::World()->selectRow('SELECT IF(ProcsPerMinute  > 0, -ProcsPerMinute, Chance) AS chance, Cooldown AS cooldown FROM spell_proc WHERE ABS(SpellId) = ?d', $this->firstRank);
+        $procData = DB::World()->selectRow('SELECT IF(ratePerMinute  > 0, -ratePerMinute, Chance) AS chance, Cooldown AS cooldown FROM spell_proc WHERE ABS(SpellId) = ?d', $this->firstRank);
         if (!isset($procData['cooldown']))
             $procData['cooldown'] = 0;
 
