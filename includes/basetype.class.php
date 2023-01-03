@@ -440,7 +440,7 @@ abstract class BaseType
          'q':   cssQuality [Items]
          'z':   zone [set when all happens in here]
          'p':   PvP [pvpSourceId]
-         's':   TYPE_TITLE: side; TYPE_SPELL: skillId (yeah, double use. Ain't life just grand)
+         's':   Type::TITLE: side; Type::SPELL: skillId (yeah, double use. Ain't life just grand)
          'c':   category [Spells / Quests]
         'c2':   subCat [Quests]
       'icon':   iconString
@@ -590,7 +590,7 @@ trait spawnHelper
         {
             // check, if we can attach waypoints to creature
             // we will get a nice clusterfuck of dots if we do this for more GUIDs, than we have colors though
-            if (count($spawns) < 6 && self::$type == TYPE_NPC)
+            if (count($spawns) < 6 && self::$type == Type::NPC)
             {
                 if ($wPoints = DB::Aowow()->select('SELECT * FROM ?_creature_waypoints WHERE creatureOrPath = ?d AND floor = ?d', $s['pathId'] ? -$s['pathId'] : $this->id, $s['floor']))
                 {
@@ -607,14 +607,14 @@ trait spawnHelper
                         );
 
                         // connective line
-                        if ($i > 0)
+                        if ($i > 0 && $wPoints[$i - 1]['areaId'] == $p['areaId'])
                             $opts['lines'] = [[$wPoints[$i - 1]['posX'], $wPoints[$i - 1]['posY']]];
 
-                        $data[$s['areaId']][$s['floor']]['coords'][] = [$p['posX'], $p['posY'], $opts];
-                        if (empty($wpSum[$s['areaId']][$s['floor']]))
-                            $wpSum[$s['areaId']][$s['floor']] = 1;
+                        $data[$p['areaId']][$p['floor']]['coords'][] = [$p['posX'], $p['posY'], $opts];
+                        if (empty($wpSum[$p['areaId']][$p['floor']]))
+                            $wpSum[$p['areaId']][$p['floor']] = 1;
                         else
-                            $wpSum[$s['areaId']][$s['floor']]++;
+                            $wpSum[$p['areaId']][$p['floor']]++;
                     }
                     $wpIdx++;
                 }
@@ -645,7 +645,7 @@ trait spawnHelper
                     $info[4] = Lang::game('mode').Lang::main('colon').implode(', ', $_);
                 }
 
-                if (self::$type == TYPE_AREATRIGGER)
+                if (self::$type == Type::AREATRIGGER)
                 {
                     $o = Util::O2Deg($this->getField('orientation'));
                     $info[5] = 'Orientation'.Lang::main('colon').$o[0].'° ('.$o[1].')';
@@ -752,7 +752,7 @@ trait spawnHelper
 
     private function createQuestSpawns()                    // [zoneId => [floor => [[x1, y1], [x2, y2], ..]]]      mapper on quest detail page
     {
-        if (self::$type == TYPE_SOUND)
+        if (self::$type == Type::SOUND)
             return;
 
         $res    = DB::Aowow()->select('SELECT areaId, floor, typeId, posX, posY FROM ?_spawns WHERE type = ?d AND typeId IN (?a) AND posX > 0 AND posY > 0', self::$type, $this->getFoundIDs());
@@ -785,7 +785,7 @@ trait spawnHelper
     public function getSpawns($mode)
     {
         // only Creatures, GOs and SoundEmitters can be spawned
-        if (!self::$type || !$this->getfoundIDs() || (self::$type != TYPE_NPC && self::$type != TYPE_OBJECT && self::$type != TYPE_SOUND && self::$type != TYPE_AREATRIGGER))
+        if (!self::$type || !$this->getfoundIDs() || (self::$type != Type::NPC && self::$type != Type::OBJECT && self::$type != Type::SOUND && self::$type != Type::AREATRIGGER))
             return [];
 
         switch ($mode)

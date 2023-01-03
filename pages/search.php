@@ -30,11 +30,20 @@ class SearchPage extends GenericPage
     protected $tpl           = 'search';
     protected $tabId         = 0;
     protected $mode          = CACHE_TYPE_SEARCH;
-    protected $js            = ['swfobject.js'];
+    protected $js            = [[JS_FILE, 'swfobject.js']];
     protected $lvTabs        = [];                          // [file, data, extraInclude, osInfo]       // osInfo:[type, appendix, nMatches, param1, param2]
     protected $forceTabs     = true;
     protected $search        = '';                          // output
     protected $invalid       = [];
+
+    protected $_get          = array(
+        'wt'         => ['filter' => FILTER_CALLBACK, 'options' => 'GenericPage::checkIntArray'],
+        'wtv'        => ['filter' => FILTER_CALLBACK, 'options' => 'GenericPage::checkIntArray'],
+        'slots'      => ['filter' => FILTER_CALLBACK, 'options' => 'GenericPage::checkIntArray'],
+        'type'       => ['filter' => FILTER_CALLBACK, 'options' => 'GenericPage::checkInt'],
+        'json'       => ['filter' => FILTER_CALLBACK, 'options' => 'GenericPage::checkEmptySet'],
+        'opensearch' => ['filter' => FILTER_CALLBACK, 'options' => 'GenericPage::checkEmptySet']
+    );
 
     private   $maxResults    = CFG_SQL_LIMIT_SEARCH;
     private   $searchMask    = 0x0;
@@ -53,18 +62,20 @@ class SearchPage extends GenericPage
 
     public function __construct($pageCall, $pageParam)
     {
-        $this->search =
-        $this->query  = trim(urlDecode($pageParam));
-
         // restricted access
         if ($this->reqUGroup && !User::isInGroup($this->reqUGroup))
             $this->error();
 
+        parent::__construct($pageCall, $pageParam);         // just to set g_user and g_locale
+
+        $this->search =
+        $this->query  = trim(urlDecode($pageParam));
+
         // sanitize stat weights
-        if (!empty($_GET['wt']) && !empty($_GET['wtv']))
+        if ($this->_get['wt'] && $this->_get['wtv'])
         {
-            $wt   = explode(':', $_GET['wt']);
-            $wtv  = explode(':', $_GET['wtv']);
+            $wt   = $this->_get['wt'];
+            $wtv  = $this->_get['wtv'];
             $nwt  = count($wt);
             $nwtv = count($wtv);
 
@@ -74,25 +85,23 @@ class SearchPage extends GenericPage
                 array_splice($wtv, $nwt);
 
             if ($wt && $wtv)
-                $this->statWeights = [array_map('intVal', $wt), array_map('intVal', $wtv)];
+                $this->statWeights = [$wt, $wtv];
         }
 
         // select search mode
-        if (isset($_GET['json']))
+        if ($this->_get['json'])
         {
             if ($_ = intVal($this->search))                 // allow for search by Id
                 $this->query = $_;
 
-            $type = isset($_GET['type']) ? intVal($_GET['type']) : 0;
-
-            if (!empty($_GET['slots']))
+            if ($this->_get['slots'])
                 $this->searchMask |= SEARCH_TYPE_JSON | 0x40;
-            else if ($type == TYPE_ITEMSET)
+            else if ($this->_get['type'] == Type::ITEMSET)
                 $this->searchMask |= SEARCH_TYPE_JSON | 0x60;
-            else if ($type == TYPE_ITEM)
+            else if ($this->_get['type'] == Type::ITEM)
                 $this->searchMask |= SEARCH_TYPE_JSON | 0x40;
         }
-        else if (isset($_GET['opensearch']))
+        else if ($this->_get['opensearch'])
         {
             $this->maxResults = CFG_SQL_LIMIT_QUICKSEARCH;
             $this->searchMask |= SEARCH_TYPE_OPEN | SEARCH_MASK_OPEN;
@@ -103,8 +112,6 @@ class SearchPage extends GenericPage
         // handle maintenance status for js-cases
         if (CFG_MAINTENANCE && !User::isInGroup(U_GROUP_EMPLOYEE) && !($this->searchMask & SEARCH_TYPE_REGULAR))
             $this->notFound();
-
-        parent::__construct($pageCall, $pageParam);         // just to set g_user and g_locale
 
         // fill include, exclude and ignore
         $this->tokenizeQuery();
@@ -180,7 +187,7 @@ class SearchPage extends GenericPage
             if ($foundTotal == 1)                           // only one match -> redirect to find
             {
                 $tab    = array_pop($this->lvTabs);
-                $type   = Util::$typeStrings[$tab[3][0]];
+                $type   = Type::getFileString($tab[3][0]);
                 $typeId = array_pop($tab[1]['data'])['id'];
 
                 header('Location: ?'.$type.'='.$typeId, true, 302);
@@ -201,7 +208,7 @@ class SearchPage extends GenericPage
         if ($this->mode == CACHE_TYPE_NONE)                 // search is invalid
             return;
 
-        $this->addJS('?data=zones&locale='.User::$localeId.'&t='.$_SESSION['dataKey']);
+        $this->addScript([JS_FILE, '?data=zones&locale='.User::$localeId.'&t='.$_SESSION['dataKey']]);
 
         $this->performSearch();
     }
@@ -297,7 +304,7 @@ class SearchPage extends GenericPage
 
                 $hasQ        = is_numeric($data['name'][0]) || $data['name'][0] == '@';
                 $result[1][] = ($hasQ ? mb_substr($data['name'], 1) : $data['name']).$osInfo[1];
-                $result[3][] = HOST_URL.'/?'.Util::$typeStrings[$osInfo[0]].'='.$data['id'];
+                $result[3][] = HOST_URL.'/?'.Type::getFileString($osInfo[0]).'='.$data['id'];
 
                 $extra       = [$osInfo[0], $data['id']];   // type, typeId
 
@@ -374,7 +381,7 @@ class SearchPage extends GenericPage
         if ($data = $classes->getListviewData())
         {
             $result['data'] = array_values($data);
-            $osInfo         = [TYPE_CLASS, ' (Class)', $classes->getMatches(), []];
+            $osInfo         = [Type::CHR_CLASS, ' (Class)', $classes->getMatches(), []];
 
             if ($this->searchMask & SEARCH_TYPE_OPEN)
                 foreach ($classes->iterate() as $id => $__)
@@ -400,7 +407,7 @@ class SearchPage extends GenericPage
         if ($data = $races->getListviewData())
         {
             $result['data'] = array_values($data);
-            $osInfo         = [TYPE_RACE, ' (Race)', $races->getMatches(), []];
+            $osInfo         = [Type::CHR_RACE, ' (Race)', $races->getMatches(), []];
 
             if ($this->searchMask & SEARCH_TYPE_OPEN)
                 foreach ($races->iterate() as $id => $__)
@@ -426,7 +433,7 @@ class SearchPage extends GenericPage
         if ($data = $titles->getListviewData())
         {
             $result['data'] = array_values($data);
-            $osInfo         = [TYPE_TITLE, ' (Title)', $titles->getMatches(), []];
+            $osInfo         = [Type::TITLE, ' (Title)', $titles->getMatches(), []];
 
             if ($this->searchMask & SEARCH_TYPE_OPEN)
                 foreach ($titles->iterate() as $id => $__)
@@ -461,7 +468,7 @@ class SearchPage extends GenericPage
                 $this->extendGlobalData($wEvents->getJSGlobals());
 
             $result['data'] = array_values($data);
-            $osInfo         = [TYPE_WORLDEVENT, ' (World Event)', $wEvents->getMatches()];
+            $osInfo         = [Type::WORLDEVENT, ' (World Event)', $wEvents->getMatches()];
 
             // as allways: dates are updated in postCache-step
 
@@ -485,7 +492,7 @@ class SearchPage extends GenericPage
         if ($data = $money->getListviewData())
         {
             $result['data'] = array_values($data);
-            $osInfo         = [TYPE_CURRENCY, ' (Currency)', $money->getMatches()];
+            $osInfo         = [Type::CURRENCY, ' (Currency)', $money->getMatches()];
 
             if ($this->searchMask & SEARCH_TYPE_OPEN)
                 foreach ($money->iterate() as $id => $__)
@@ -514,7 +521,7 @@ class SearchPage extends GenericPage
                 $this->extendGlobalData($sets->getJSGlobals(GLOBALINFO_SELF));
 
             $result['data'] = array_values($data);
-            $osInfo         = [TYPE_ITEMSET, ' (Item Set)', $sets->getMatches()];
+            $osInfo         = [Type::ITEMSET, ' (Item Set)', $sets->getMatches()];
 
             if ($this->searchMask & SEARCH_TYPE_OPEN)
                 foreach ($sets->iterate() as $id => $__)
@@ -555,8 +562,7 @@ class SearchPage extends GenericPage
             $cnd[] = ['i.class', [ITEM_CLASS_WEAPON, ITEM_CLASS_GEM, ITEM_CLASS_ARMOR]];
             $cnd[] = $cndAdd;
 
-            $slots = isset($_GET['slots']) ? explode(':', $_GET['slots']) : [];
-            if ($_ = array_filter(array_map('intVal', $slots)))
+            if ($_ = array_filter($this->_get['slots'] ?? []))
                 $cnd[] = ['slot', $_];
 
             // trick ItemListFilter into evaluating weights
@@ -585,7 +591,7 @@ class SearchPage extends GenericPage
                     foreach ($data[$itemId]['subitems'] as &$si)
                         $si['enchantment'] = implode(', ', $si['enchantment']);
 
-            $osInfo         = [TYPE_ITEM, ' (Item)', $items->getMatches(), [], []];
+            $osInfo         = [Type::ITEM, ' (Item)', $items->getMatches(), [], []];
             $result['data'] = array_values($data);
 
             if ($this->searchMask & SEARCH_TYPE_OPEN)
@@ -616,7 +622,7 @@ class SearchPage extends GenericPage
 
     private function _searchAbility($cndBase)               // 7 Abilities (Player + Pet) $searchMask & 0x0000080
     {
-        $cnd       = array_merge($cndBase, array(              // hmm, inclued classMounts..?
+        $cnd       = array_merge($cndBase, array(           // hmm, inclued classMounts..?
             ['s.typeCat', [7, -2, -3, -4]],
             [['s.cuFlags', (SPELL_CU_TRIGGERED | SPELL_CU_TALENT), '&'], 0],
             [['s.attributes0', 0x80, '&'], 0],
@@ -634,7 +640,7 @@ class SearchPage extends GenericPage
             {
                 $multiClass = 0;
                 for ($i = 1; $i <= 10; $i++)
-                    if ($d['reqclass'] & (1 << ($i - 1)))
+                    if (isset($d['reqclass']) && ($d['reqclass'] & (1 << ($i - 1))))
                         $multiClass++;
 
                 if ($multiClass > 1)
@@ -647,7 +653,7 @@ class SearchPage extends GenericPage
 
             $vis[] = $multiClass > 1 ? 'classes' : 'singleclass';
 
-            $osInfo = [TYPE_SPELL, ' (Ability)', $abilities->getMatches(), [], []];
+            $osInfo = [Type::SPELL, ' (Ability)', $abilities->getMatches(), [], []];
             $result = array(
                 'data'        => array_values($data),
                 'id'          => 'abilities',
@@ -698,7 +704,7 @@ class SearchPage extends GenericPage
             if ($talents->hasSetFields(['reagent1']))
                 $vis[] = 'reagents';
 
-            $osInfo = [TYPE_SPELL, ' (Talent)', $talents->getMatches(), [], []];
+            $osInfo = [Type::SPELL, ' (Talent)', $talents->getMatches(), [], []];
             $result = array(
                 'data'        => array_values($data),
                 'id'          => 'talents',
@@ -745,7 +751,7 @@ class SearchPage extends GenericPage
             if ($this->searchMask & SEARCH_TYPE_REGULAR)
                 $this->extendGlobalData($glyphs->getJSGlobals(GLOBALINFO_SELF));
 
-            $osInfo = [TYPE_SPELL, ' (Glyph)', $glyphs->getMatches(), []];
+            $osInfo = [Type::SPELL, ' (Glyph)', $glyphs->getMatches(), []];
             $result = array(
                 'data'        => array_values($data),
                 'id'          => 'glyphs',
@@ -787,7 +793,7 @@ class SearchPage extends GenericPage
             if ($this->searchMask & SEARCH_TYPE_REGULAR)
                 $this->extendGlobalData($prof->getJSGlobals(GLOBALINFO_SELF));
 
-            $osInfo = [TYPE_SPELL, ' (Proficiency)', $prof->getMatches(), []];
+            $osInfo = [Type::SPELL, ' (Proficiency)', $prof->getMatches(), []];
             $result = array(
                 'data'        => array_values($data),
                 'id'          => 'proficiencies',
@@ -829,7 +835,7 @@ class SearchPage extends GenericPage
             if ($this->searchMask & SEARCH_TYPE_REGULAR)
                 $this->extendGlobalData($prof->getJSGlobals(GLOBALINFO_SELF | GLOBALINFO_RELATED));
 
-            $osInfo = [TYPE_SPELL, ' (Profession)', $prof->getMatches()];
+            $osInfo = [Type::SPELL, ' (Profession)', $prof->getMatches()];
             $result = array(
                 'data'        => array_values($data),
                 'id'          => 'professions',
@@ -871,7 +877,7 @@ class SearchPage extends GenericPage
             if ($this->searchMask & SEARCH_TYPE_REGULAR)
                 $this->extendGlobalData($vPets->getJSGlobals());
 
-            $osInfo = [TYPE_SPELL, ' (Companion)', $vPets->getMatches(), []];
+            $osInfo = [Type::SPELL, ' (Companion)', $vPets->getMatches(), []];
             $result = array(
                 'data'        => array_values($data),
                 'id'          => 'companions',
@@ -913,7 +919,7 @@ class SearchPage extends GenericPage
             if ($this->searchMask & SEARCH_TYPE_REGULAR)
                 $this->extendGlobalData($mounts->getJSGlobals(GLOBALINFO_SELF));
 
-            $osInfo = [TYPE_SPELL, ' (Mount)', $mounts->getMatches(), []];
+            $osInfo = [Type::SPELL, ' (Mount)', $mounts->getMatches(), []];
             $result = array(
                 'data' => array_values($data),
                 'id'   => 'mounts',
@@ -952,7 +958,7 @@ class SearchPage extends GenericPage
 
         if ($data = $npcs->getListviewData())
         {
-            $osInfo = [TYPE_NPC, ' (NPC)', $npcs->getMatches()];
+            $osInfo = [Type::NPC, ' (NPC)', $npcs->getMatches()];
             $result = array(
                 'data' => array_values($data),
                 'id'   => 'npcs',
@@ -986,7 +992,7 @@ class SearchPage extends GenericPage
 
         if ($data = $quests->getListviewData())
         {
-            $osInfo         = [TYPE_QUEST, ' (Quest)', $quests->getMatches()];
+            $osInfo         = [Type::QUEST, ' (Quest)', $quests->getMatches()];
             $result['data'] = array_values($data);
 
             if ($this->searchMask & SEARCH_TYPE_REGULAR)
@@ -1022,7 +1028,7 @@ class SearchPage extends GenericPage
             if ($this->searchMask & SEARCH_TYPE_REGULAR)
                 $this->extendGlobalData($acvs->getJSGlobals());
 
-            $osInfo = [TYPE_ACHIEVEMENT, ' (Achievement)', $acvs->getMatches(), []];
+            $osInfo = [Type::ACHIEVEMENT, ' (Achievement)', $acvs->getMatches(), []];
             $result = array(
                 'data'        => array_values($data),
                 'visibleCols' => ['category']
@@ -1062,7 +1068,7 @@ class SearchPage extends GenericPage
             if ($this->searchMask & SEARCH_TYPE_REGULAR)
                 $this->extendGlobalData($stats->getJSGlobals(GLOBALINFO_SELF));
 
-            $osInfo = [TYPE_ACHIEVEMENT, ' (Statistic)', $stats->getMatches()];
+            $osInfo = [Type::ACHIEVEMENT, ' (Statistic)', $stats->getMatches()];
             $result = array(
                 'data'        => array_values($data),
                 'visibleCols' => ['category'],
@@ -1098,7 +1104,7 @@ class SearchPage extends GenericPage
             if ($this->searchMask & SEARCH_TYPE_REGULAR)
                 $this->extendGlobalData($zones->getJSGlobals());
 
-            $osInfo         = [TYPE_ZONE, ' (Zone)', $zones->getMatches()];
+            $osInfo         = [Type::ZONE, ' (Zone)', $zones->getMatches()];
             $result['data'] = array_values($data);
 
             if ($zones->getMatches() > $this->maxResults)
@@ -1123,7 +1129,7 @@ class SearchPage extends GenericPage
             if ($this->searchMask & SEARCH_TYPE_REGULAR)
                 $this->extendGlobalData($objects->getJSGlobals());
 
-            $osInfo         = [TYPE_OBJECT, ' (Object)', $objects->getMatches()];
+            $osInfo         = [Type::OBJECT, ' (Object)', $objects->getMatches()];
             $result['data'] = array_values($data);
 
             if ($objects->getMatches() > $this->maxResults)
@@ -1150,7 +1156,7 @@ class SearchPage extends GenericPage
 
         if ($data = $factions->getListviewData())
         {
-            $osInfo         = [TYPE_FACTION, ' (Faction)', $factions->getMatches()];
+            $osInfo         = [Type::FACTION, ' (Faction)', $factions->getMatches()];
             $result['data'] = array_values($data);
 
             if ($factions->getMatches() > $this->maxResults)
@@ -1172,7 +1178,7 @@ class SearchPage extends GenericPage
 
         if ($data = $skills->getListviewData())
         {
-            $osInfo         = [TYPE_SKILL, ' (Skill)', $skills->getMatches(), []];
+            $osInfo         = [Type::SKILL, ' (Skill)', $skills->getMatches(), []];
             $result['data'] = array_values($data);
 
             if ($this->searchMask & SEARCH_TYPE_OPEN)
@@ -1198,7 +1204,7 @@ class SearchPage extends GenericPage
 
         if ($data = $pets->getListviewData())
         {
-            $osInfo         = [TYPE_PET, ' (Pet)', $pets->getMatches(), []];
+            $osInfo         = [Type::PET, ' (Pet)', $pets->getMatches(), []];
             $result = array(
                 'data'            => array_values($data),
                 'computeDataFunc' => '$_'
@@ -1233,7 +1239,7 @@ class SearchPage extends GenericPage
             if ($this->searchMask & SEARCH_TYPE_REGULAR)
                 $this->extendGlobalData($npcAbilities->getJSGlobals(GLOBALINFO_SELF));
 
-            $osInfo = [TYPE_SPELL, ' (Spell)', $npcAbilities->getMatches(), []];
+            $osInfo = [Type::SPELL, ' (Spell)', $npcAbilities->getMatches(), []];
             $result = array(
                 'data'        => array_values($data),
                 'id'          => 'npc-abilities',
@@ -1266,6 +1272,7 @@ class SearchPage extends GenericPage
     private function _searchSpell($cndBase)                 // 24 Spells (Misc + GM + triggered abilities) $searchMask & 0x1000000
     {
         $cnd  = array_merge($cndBase, array(
+            ['s.typeCat', -8, '!'],
             [
                 'OR',
                 ['s.typeCat', [0, -9]],
@@ -1281,7 +1288,7 @@ class SearchPage extends GenericPage
             if ($this->searchMask & SEARCH_TYPE_REGULAR)
                 $this->extendGlobalData($misc->getJSGlobals(GLOBALINFO_SELF | GLOBALINFO_RELATED));
 
-            $osInfo = [TYPE_SPELL, ' (Spell)', $misc->getMatches(), []];
+            $osInfo = [Type::SPELL, ' (Spell)', $misc->getMatches(), []];
             $result = array(
                 'data'        => array_values($data),
                 'name'        => '$LANG.tab_uncategorizedspells',
@@ -1317,7 +1324,7 @@ class SearchPage extends GenericPage
 
         if ($data = $emote->getListviewData())
         {
-            $osInfo = [TYPE_EMOTE, ' (Emote)', $emote->getMatches()];
+            $osInfo = [Type::EMOTE, ' (Emote)', $emote->getMatches()];
             $result = array(
                 'data' => array_values($data),
                 'name' => Util::ucFirst(Lang::game('emotes'))
@@ -1338,7 +1345,7 @@ class SearchPage extends GenericPage
         {
             $this->extendGlobalData($enchantment->getJSGlobals());
 
-            $osInfo = [TYPE_ENCHANTMENT, ' (Enchantment)', $enchantment->getMatches()];
+            $osInfo = [Type::ENCHANTMENT, ' (Enchantment)', $enchantment->getMatches()];
             $result = array(
                 'data' => array_values($data),
                 'name' => Util::ucFirst(Lang::game('enchantments'))
@@ -1372,7 +1379,7 @@ class SearchPage extends GenericPage
             if ($this->searchMask & SEARCH_TYPE_REGULAR)
                 $this->extendGlobalData($sounds->getJSGlobals());
 
-            $osInfo         = [TYPE_SOUND, ' (Sound)', $sounds->getMatches()];
+            $osInfo         = [Type::SOUND, ' (Sound)', $sounds->getMatches()];
             $result['data'] = array_values($data);
 
             if ($sounds->getMatches() > $this->maxResults)

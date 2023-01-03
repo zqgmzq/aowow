@@ -6,17 +6,16 @@ if (!defined('AOWOW_REVISION'))
 
 trait TrDetailPage
 {
-    protected $hasComContent = true;
-    protected $category      = null;                        // not used on detail pages
-    protected $lvTabs        = [];                          // most pages have this
+    protected $category   = null;                           // not used on detail pages
+    protected $lvTabs     = [];                             // most pages have this
 
-    protected $ssError       = null;
-    protected $coError       = null;
-    protected $viError       = null;
+    protected $ssError    = null;
+    protected $coError    = null;
+    protected $viError    = null;
 
-    protected $subject       = null;                        // so it will not get cached
+    protected $subject    = null;                           // so it will not get cached
 
-    protected $contribute    = CONTRIBUTE_ANY;
+    protected $contribute = CONTRIBUTE_ANY;
 
     protected function generateCacheKey(bool $withStaff = true) : string
     {
@@ -108,7 +107,7 @@ trait TrProfiler
 
         $cat = array_map('urldecode', $cat);
 
-        if ($cat[0] !== 'eu' && $cat[0] !== 'us')
+        if (array_search($cat[0], Util::$regions) === false)
             return;
 
         $this->region = $cat[0];
@@ -136,8 +135,8 @@ trait TrProfiler
     {
         $this->prepareContent();
 
-        $this->hasComContent = false;
-        $this->notFound      = array(
+        $this->contribute = CONTRIBUTE_NONE;
+        $this->notFound   = array(
             'title' => sprintf(Lang::profiler('firstUseTitle'), $this->subjectName, $this->realm),
             'msg'   => ''
         );
@@ -168,10 +167,13 @@ trait TrProfiler
 
 class GenericPage
 {
+    use TrRequestData;
+
     protected $tpl          = '';
     protected $reqUGroup    = U_GROUP_NONE;
     protected $reqAuth      = false;
     protected $mode         = CACHE_TYPE_NONE;
+ // protected $contribute;                                  // defined in __construct()
 
     protected $jsGlobals    = [];
     protected $lvData       = [];
@@ -231,12 +233,18 @@ class GenericPage
         'title'             => ['template' => 'title',             'id' => 'titles',          'parent' => 'lv-generic', 'data' => [], 'name' => '$LANG.tab_titles'        ],
         'topusers'          => ['template' => 'topusers',          'id' => 'topusers',        'parent' => 'lv-generic', 'data' => [], 'name' => '$LANG.topusers'          ],
         'video'             => ['template' => 'video',             'id' => 'videos',          'parent' => 'lv-generic', 'data' => [], 'name' => '$LANG.tab_videos'        ],
-        'zone'              => ['template' => 'zone',              'id' => 'zones',           'parent' => 'lv-generic', 'data' => [], 'name' => '$LANG.tab_zones'         ]
+        'zone'              => ['template' => 'zone',              'id' => 'zones',           'parent' => 'lv-generic', 'data' => [], 'name' => '$LANG.tab_zones'         ],
+        'guide'             => ['template' => 'guide',             'id' => 'guides',          'parent' => 'lv-generic', 'data' => [],                                     ]
     );
 
     public function __construct(string $pageCall = '', string $pageParam = '')
     {
         $this->time = microtime(true);
+
+        $this->initRequestData();
+
+        if (!isset($this->contribute))
+            $this->contribute = CONTRIBUTE_NONE;
 
         $this->fullParams = $pageCall;
         if ($pageParam)
@@ -356,18 +364,24 @@ class GenericPage
     {
         if (!$this->loadCache())
         {
-            $this->addArticle();
-
             $this->generateContent();
             $this->generatePath();
             $this->generateTitle();
+            $this->addArticle();
 
             $this->applyGlobals();
 
             $this->saveCache();
         }
 
-        if (isset($this->type) && isset($this->typeId))
+        if ($this instanceof GuidePage)
+        {
+            $this->gPageInfo = ['name' => $this->name];
+            if (isset($this->author))
+                $this->gPageInfo['author'] = $this->author;
+
+        }
+        else if (isset($this->type) && isset($this->typeId))
         {
             $this->gPageInfo = array(                       // varies slightly for special pages like maps, user-dashboard or profiler
                 'type'   => $this->type,
@@ -375,7 +389,9 @@ class GenericPage
                 'name'   => $this->name
             );
         }
-        else if (!empty($this->articleUrl))
+
+        // only adds edit links to the staff menu: precursor to guides?
+        if (!empty($this->articleUrl) && !($this instanceof GuidePage && $this->show == GuidePage::SHOW_GUIDE))
         {
             $this->gPageInfo = array(
                 'articleUrl' => $this->fullParams,          // is actually be the url-param
@@ -399,11 +415,19 @@ class GenericPage
             $this->contribute = $x::$contribute;
         }
 
-        if (!empty($this->hasComContent))                   // get comments, screenshots, videos
+        if ($this->contribute & CONTRIBUTE_CO)
+            $this->community['co'] = CommunityContent::getComments($this->type, $this->typeId);
+
+        if ($this->contribute & CONTRIBUTE_SS)
+            $this->community['ss'] = CommunityContent::getScreenshots($this->type, $this->typeId);
+
+        if ($this->contribute & CONTRIBUTE_VI)
+            $this->community['vi'] = CommunityContent::getVideos($this->type, $this->typeId);
+
+        // as comments are not cached, those globals cant be either
+        if ($this->contribute)
         {
-            $jsGlobals = [];
-            $this->community = CommunityContent::getAll($this->type, $this->typeId, $jsGlobals);
-            $this->extendGlobalData($jsGlobals);            // as comments are not cached, those globals cant be either
+            $this->extendGlobalData(CommunityContent::getJSGlobals());
             $this->applyGlobals();
         }
 
@@ -411,54 +435,55 @@ class GenericPage
         $this->sumSQLStats();
     }
 
-    public function addJS($name, bool $unshift = false) : void
+    public function addScript(array ...$structs) : void
     {
-        if (is_array($name))
+        foreach ($structs as $s)                            // iType, sContent, bFront, sIeCnd
         {
-            foreach ($name as $n)
-                $this->addJS($n, $unshift);
-        }
-        else if (!in_array($name, $this->js))
-        {
-            if ($unshift)
-                array_unshift($this->js, $name);
-            else
-                $this->js[] = $name;
-        }
-    }
+            if (empty($s[1]))
+            {
+                trigger_error('GenericPage::addScript - content empty', E_USER_WARNING);
+                continue;
+            }
 
-    public function addCSS(array $struct, bool $unshift = false) : void
-    {
-        if (is_array($struct) && empty($struct['path']) && empty($struct['string']))
-        {
-            foreach ($struct as $s)
-                $this->addCSS($s, $unshift);
-        }
-        else if (!in_array($struct, $this->css))
-        {
-            if ($unshift)
-                array_unshift($this->css, $struct);
-            else
-                $this->css[] = $struct;
+            $s = array_pad($s, 4, '');
+            switch ($s[0])
+            {
+                case JS_FILE:
+                case JS_STRING:
+                    if (empty($s[2]))
+                        $this->js[] = $s;
+                    else
+                        array_unshift($this->js, $s);
+                    break;
+                case CSS_FILE:
+                case CSS_STRING:
+                    if (empty($s[2]))
+                        $this->css[] = $s;
+                    else
+                        array_unshift($this->css, $s);
+                    break;
+                default:
+                    trigger_error('GenericPage::addScript - unknown script type #'.$s[0], E_USER_WARNING);
+            }
         }
     }
 
     // get article & static infobox (run before processing jsGlobals)
     private function addArticle() :void
     {
+        if (isset($this->article))
+            return;
+
         $article = [];
-        if (!empty($this->type) && isset($this->typeId))
-        {
-            $article = DB::Aowow()->selectRow('SELECT article, quickInfo, locale, editAccess FROM ?_articles WHERE type = ?d AND typeId = ?d AND locale = ?d UNION ALL SELECT article, quickInfo, locale, editAccess FROM ?_articles WHERE type = ?d AND typeId = ?d AND locale = 0  ORDER BY locale DESC LIMIT 1',
-                $this->type, $this->typeId, User::$localeId, $this->type, $this->typeId
-            );
-        }
+        if (isset($this->guideRevision))
+            $article = DB::Aowow()->selectRow('SELECT `article`, `quickInfo`, `locale`, `editAccess` FROM ?_articles WHERE `type` = ?d AND `typeId` = ?d AND `rev` = ?d',
+                Type::GUIDE, $this->typeId, $this->guideRevision);
         else if (!empty($this->articleUrl))
-        {
-            $article = DB::Aowow()->selectRow('SELECT article, quickInfo, locale, editAccess FROM ?_articles WHERE url = ? AND locale = ?d UNION ALL SELECT article, quickInfo, locale, editAccess FROM ?_articles WHERE url = ? AND locale = 0  ORDER BY locale DESC LIMIT 1',
-                $this->articleUrl, User::$localeId, $this->articleUrl
-            );
-        }
+            $article = DB::Aowow()->selectRow('SELECT `article`, `quickInfo`, `locale`, `editAccess` FROM ?_articles WHERE `url` = ? AND `locale` IN (?a) ORDER BY `locale`, `rev` DESC LIMIT 1',
+                $this->articleUrl, [User::$localeId, LOCALE_EN]);
+        else if (!empty($this->type) && isset($this->typeId))
+            $article = DB::Aowow()->selectRow('SELECT `article`, `quickInfo`, `locale`, `editAccess` FROM ?_articles WHERE `type` = ?d AND `typeId` = ?d AND `locale` IN (?a) ORDER BY `locale`, `rev` DESC LIMIT 1',
+                $this->type, $this->typeId, [User::$localeId, LOCALE_EN]);
 
         if ($article)
         {
@@ -579,8 +604,6 @@ class GenericPage
     // unknown entry
     public function notFound(string $title = '', string $msg = '') : void
     {
-        header('HTTP/1.0 404 Not Found', true, 404);
-
         if ($this->mode == CACHE_TYPE_TOOLTIP && method_exists($this, 'generateTooltip'))
         {
             header(MIME_TYPE_JSON);
@@ -593,10 +616,12 @@ class GenericPage
         }
         else
         {
+            header('HTTP/1.0 404 Not Found', true, 404);
+
             array_unshift($this->title, Lang::main('nfPageTitle'));
 
-            $this->hasComContent = false;
-            $this->notFound      = array(
+            $this->contribute = CONTRIBUTE_NONE;
+            $this->notFound   = array(
                 'title' =>          isset($this->typeId) ? Util::ucFirst($title).' #'.$this->typeId    : $title,
                 'msg'   => !$msg && isset($this->typeId) ? sprintf(Lang::main('pageNotFound'), $title) : $msg
             );
@@ -714,6 +739,9 @@ class GenericPage
     {
         $buff = '';
 
+        if (!empty($this->guideRating))
+            $buff .= sprintf(Util::$guideratingString, ...$this->guideRating);
+
         foreach ($this->jsGlobals as $type => $struct)
         {
             $buff .= "            var _ = ".$struct[0].';';
@@ -723,7 +751,7 @@ class GenericPage
                 foreach ($data as $k => $v)
                 {
                     // localizes expected fields .. except for icons .. icons are special
-                    if (in_array($k, ['name', 'namefemale']) && $struct[0]  != 'g_icons')
+                    if (in_array($k, ['name', 'namefemale']) && $struct[0] != Type::getJSGlobalString(Type::ICON))
                     {
                         $data[$k.'_'.User::$localeString] = $v;
                         unset($data[$k]);
@@ -843,31 +871,8 @@ class GenericPage
         if (isset($jsg[$type]))
             return;
 
-        switch ($type)
-        {                                                // [varName,            [data], [extra]]
-            case TYPE_NPC:         $jsg[TYPE_NPC]         = ['g_npcs',               [], []]; break;
-            case TYPE_OBJECT:      $jsg[TYPE_OBJECT]      = ['g_objects',            [], []]; break;
-            case TYPE_ITEM:        $jsg[TYPE_ITEM]        = ['g_items',              [], []]; break;
-            case TYPE_ITEMSET:     $jsg[TYPE_ITEMSET]     = ['g_itemsets',           [], []]; break;
-            case TYPE_QUEST:       $jsg[TYPE_QUEST]       = ['g_quests',             [], []]; break;
-            case TYPE_SPELL:       $jsg[TYPE_SPELL]       = ['g_spells',             [], []]; break;
-            case TYPE_ZONE:        $jsg[TYPE_ZONE]        = ['g_gatheredzones',      [], []]; break;
-            case TYPE_FACTION:     $jsg[TYPE_FACTION]     = ['g_factions',           [], []]; break;
-            case TYPE_PET:         $jsg[TYPE_PET]         = ['g_pets',               [], []]; break;
-            case TYPE_ACHIEVEMENT: $jsg[TYPE_ACHIEVEMENT] = ['g_achievements',       [], []]; break;
-            case TYPE_TITLE:       $jsg[TYPE_TITLE]       = ['g_titles',             [], []]; break;
-            case TYPE_WORLDEVENT:  $jsg[TYPE_WORLDEVENT]  = ['g_holidays',           [], []]; break;
-            case TYPE_CLASS:       $jsg[TYPE_CLASS]       = ['g_classes',            [], []]; break;
-            case TYPE_RACE:        $jsg[TYPE_RACE]        = ['g_races',              [], []]; break;
-            case TYPE_SKILL:       $jsg[TYPE_SKILL]       = ['g_skills',             [], []]; break;
-            case TYPE_CURRENCY:    $jsg[TYPE_CURRENCY]    = ['g_gatheredcurrencies', [], []]; break;
-            case TYPE_SOUND:       $jsg[TYPE_SOUND]       = ['g_sounds',             [], []]; break;
-            case TYPE_ICON:        $jsg[TYPE_ICON]        = ['g_icons',              [], []]; break;
-            // well, this is awkward
-            case TYPE_USER:        $jsg[TYPE_USER]        = ['g_users',              [], []]; break;
-            case TYPE_EMOTE:       $jsg[TYPE_EMOTE]       = ['g_emotes',             [], []]; break;
-            case TYPE_ENCHANTMENT: $jsg[TYPE_ENCHANTMENT] = ['g_enchantments',       [], []]; break;
-        }
+        if ($tpl = Type::getJSGlobalTemplate($type))
+            $jsg[$type] = $tpl;
     }
 
     // lookup jsGlobals from collected typeIds
@@ -884,34 +889,9 @@ class GenericPage
 
             $this->initJSGlobal($type);
 
-            $cnd = [CFG_SQL_LIMIT_NONE, ['id', array_unique($ids, SORT_NUMERIC)]];
-
-            switch ($type)
-            {
-                case TYPE_NPC:         $obj = new CreatureList($cnd);    break;
-                case TYPE_OBJECT:      $obj = new GameobjectList($cnd);  break;
-                case TYPE_ITEM:        $obj = new ItemList($cnd);        break;
-                case TYPE_ITEMSET:     $obj = new ItemsetList($cnd);     break;
-                case TYPE_QUEST:       $obj = new QuestList($cnd);       break;
-                case TYPE_SPELL:       $obj = new SpellList($cnd);       break;
-                case TYPE_ZONE:        $obj = new ZoneList($cnd);        break;
-                case TYPE_FACTION:     $obj = new FactionList($cnd);     break;
-                case TYPE_PET:         $obj = new PetList($cnd);         break;
-                case TYPE_ACHIEVEMENT: $obj = new AchievementList($cnd); break;
-                case TYPE_TITLE:       $obj = new TitleList($cnd);       break;
-                case TYPE_WORLDEVENT:  $obj = new WorldEventList($cnd);  break;
-                case TYPE_CLASS:       $obj = new CharClassList($cnd);   break;
-                case TYPE_RACE:        $obj = new CharRaceList($cnd);    break;
-                case TYPE_SKILL:       $obj = new SkillList($cnd);       break;
-                case TYPE_CURRENCY:    $obj = new CurrencyList($cnd);    break;
-                case TYPE_SOUND:       $obj = new SoundList($cnd);       break;
-                case TYPE_ICON:        $obj = new IconList($cnd);        break;
-                // "um, eh":, he ums and ehs.
-                case TYPE_USER:        $obj = new UserList($cnd);        break;
-                case TYPE_EMOTE:       $obj = new EmoteList($cnd);       break;
-                case TYPE_ENCHANTMENT: $obj = new EnchantmentList($cnd); break;
-                default: continue 2;
-            }
+            $obj = Type::newList($type, [CFG_SQL_LIMIT_NONE, ['id', array_unique($ids, SORT_NUMERIC)]]);
+            if (!$obj)
+                continue;
 
             $this->extendGlobalData($obj->getJSGlobals(GLOBALINFO_SELF));
 

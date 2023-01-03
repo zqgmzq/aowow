@@ -9,17 +9,13 @@ if (!CLI)
 
 SqlGen::register(new class extends SetupScript
 {
-    use TrCustomData;
+    use TrCustomData;                                       // import custom data from DB
 
     protected $command = 'achievement';
 
     protected $tblDependencyAowow = ['icons'];
     protected $tblDependencyTC    = ['dbc_achievement', 'disables'];
     protected $dbcSourceFiles     = ['achievement_category', 'achievement', 'spellicon'];
-
-    private $customData = array(
-        1956 => ['itemExtra' => 44738]              // Higher Learning - item rewarded through gossip
-    );
 
     public function generate(array $ids = []) : bool
     {
@@ -126,6 +122,8 @@ SqlGen::register(new class extends SetupScript
 
         if ($criteria = DB::World()->selectCol('SELECT entry FROM disables WHERE sourceType = 4'))
             DB::Aowow()->query('UPDATE aowow_achievement a JOIN aowow_achievementcriteria ac ON a.id = ac.refAchievementId SET a.cuFlags = ?d WHERE ac.id IN (?a)', CUSTOM_DISABLED, $criteria);
+
+        $this->reapplyCCFlags('achievement', Type::ACHIEVEMENT);
 
         return true;
     }

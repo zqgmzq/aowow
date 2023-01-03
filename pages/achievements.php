@@ -10,12 +10,15 @@ class AchievementsPage extends GenericPage
 {
     use TrListPage;
 
-    protected $type          = TYPE_ACHIEVEMENT;
+    protected $type          = Type::ACHIEVEMENT;
     protected $tpl           = 'achievements';
     protected $path          = [0, 9];
     protected $tabId         = 0;
     protected $mode          = CACHE_TYPE_PAGE;
-    protected $js            = ['filters.js'];
+    protected $js            = [[JS_FILE, 'filters.js']];
+
+    protected $_get          = ['filter' => ['filter' => FILTER_UNSAFE_RAW]];
+
     protected $validCats     = array(
         92  => true,
         96  => [14861, 14862, 14863],
@@ -64,7 +67,7 @@ class AchievementsPage extends GenericPage
 
         // recreate form selection
         $this->filter = $this->filterObj->getForm();
-        $this->filter['query'] = isset($_GET['filter']) ? $_GET['filter'] : null;
+        $this->filter['query'] = $this->_get['filter'];
         $this->filter['initData'] = ['init' => 'achievements'];
 
         if ($x = $this->filterObj->getSetCriteria())

@@ -10,12 +10,14 @@ class EventPage extends GenericPage
 {
     use TrDetailPage;
 
-    protected $type          = TYPE_WORLDEVENT;
+    protected $type          = Type::WORLDEVENT;
     protected $typeId        = 0;
     protected $tpl           = 'detail-page-generic';
     protected $path          = [0, 11];
     protected $tabId         = 0;
     protected $mode          = CACHE_TYPE_PAGE;
+
+    protected $_get          = ['domain' => ['filter' => FILTER_CALLBACK, 'options' => 'GenericPage::checkDomain']];
 
     private   $powerTpl      = '$WowheadPower.registerHoliday(%d, %d, %s);';
     private   $hId           = 0;
@@ -26,8 +28,8 @@ class EventPage extends GenericPage
         parent::__construct($pageCall, $id);
 
         // temp locale
-        if ($this->mode == CACHE_TYPE_TOOLTIP && isset($_GET['domain']))
-            Util::powerUseLocale($_GET['domain']);
+        if ($this->mode == CACHE_TYPE_TOOLTIP && $this->_get['domain'])
+            Util::powerUseLocale($this->_get['domain']);
 
         $this->typeId = intVal($id);
 
@@ -65,7 +67,7 @@ class EventPage extends GenericPage
 
     protected function generateContent()
     {
-        $this->addJS('?data=zones&locale='.User::$localeId.'&t='.$_SESSION['dataKey']);
+        $this->addScript([JS_FILE, '?data=zones&locale='.User::$localeId.'&t='.$_SESSION['dataKey']]);
 
         /***********/
         /* Infobox */
@@ -76,7 +78,7 @@ class EventPage extends GenericPage
         // boss
         if ($_ = $this->subject->getField('bossCreature'))
         {
-            $this->extendGlobalIds(TYPE_NPC, $_);
+            $this->extendGlobalIds(Type::NPC, $_);
             $this->infobox[] = Lang::npc('rank', 3).Lang::main('colon').'[npc='.$_.']';
         }
 
@@ -185,10 +187,10 @@ class EventPage extends GenericPage
                 $this->lvTabs[] = ['quest', $tabData];
 
                 $questItems = [];
-                foreach (array_column($quests->rewards, TYPE_ITEM) as $arr)
+                foreach (array_column($quests->rewards, Type::ITEM) as $arr)
                     $questItems = array_merge($questItems, $arr);
 
-                foreach (array_column($quests->requires, TYPE_ITEM) as $arr)
+                foreach (array_column($quests->requires, Type::ITEM) as $arr)
                     $questItems = array_merge($questItems, $arr);
 
                 if ($questItems)
@@ -248,7 +250,7 @@ class EventPage extends GenericPage
                     if ($r <= 0)
                         continue;
 
-                    $this->extendGlobalIds(TYPE_WORLDEVENT, $r);
+                    $this->extendGlobalIds(Type::WORLDEVENT, $r);
 
                     $d = $this->subject->getListviewData();
                     $d[$this->eId]['condition'][0][$this->typeId][] = [[-CND_ACTIVE_EVENT, $r]];

@@ -26,6 +26,7 @@ class FileGen
         'searchboxBody'   => ['searchbox.html', 'static/widgets/searchbox/',      []],
         'realmMenu'       => ['profile_all.js', 'static/js/',                     ['realmlist']],
         'locales'         => ['locale.js',      'static/js/',                     []],
+        'markup'          => ['Markup.js',      'static/js/',                     []],
         'itemScaling'     => ['item-scaling',   'datasets/',                      []]
     );
     public static $datasets   = array(                      // name => [AowowDeps, TCDeps, info]
@@ -59,10 +60,11 @@ class FileGen
     );
 
     private static $txtConstants = array(
-        'CFG_NAME'       => '',
-        'CFG_NAME_SHORT' => '',
-        'HOST_URL'       => '',
-        'STATIC_URL'     => ''
+        'CFG_NAME'          => '',
+        'CFG_NAME_SHORT'    => '',
+        'CFG_CONTACT_EMAIL' => '',
+        'HOST_URL'          => '',
+        'STATIC_URL'        => ''
     );
 
     public static function init(int $mode = self::MODE_NORMAL, array $updScripts = []) : bool
@@ -87,7 +89,7 @@ class FileGen
         CLI::write();
 
         // handle command prompts
-        if (!self::handleCLIOpts($doScripts))
+        if (!self::handleCLIOpts($doScripts) && !$updScripts)
             return false;
 
         // check passed subscript names; limit to real scriptNames

@@ -18,7 +18,7 @@ Also, this project is not meant to be used for commercial puposes of any kind!
 
 ## Requirements
 
-+ Webserver running PHP ≥ 7.1 — 8.0 including extensions:
++ Webserver running PHP ≥ 8.0 including extensions:
   + [SimpleXML](https://www.php.net/manual/en/book.simplexml.php)
   + [GD](https://www.php.net/manual/en/book.image)
   + [MySQL Improved](https://www.php.net/manual/en/book.mysqli.php)
@@ -137,6 +137,6 @@ A: A search is only conducted against the currently used locale. You may have on
 
 ## Special Thanks
 Said website with the red smiling rocket, for providing this beautifull website!
-Please do not reagard this project as blatant rip-off, rather as "We do really liked your presentation, but since time and content progresses, you are sadly no longer supplying the data we need".
+Please do not regard this project as blatant rip-off, rather as "We do really liked your presentation, but since time and content progresses, you are sadly no longer supplying the data we need".
 
 ![uses badges](http://forthebadge.com/images/badges/uses-badges.svg)

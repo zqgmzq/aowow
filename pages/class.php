@@ -10,13 +10,13 @@ class ClassPage extends GenericPage
 {
     use TrDetailPage;
 
-    protected $type          = TYPE_CLASS;
+    protected $type          = Type::CHR_CLASS;
     protected $typeId        = 0;
     protected $tpl           = 'detail-page-generic';
     protected $path          = [0, 12];
     protected $tabId         = 0;
     protected $mode          = CACHE_TYPE_PAGE;
-    protected $js            = ['swfobject.js'];
+    protected $js            = [[JS_FILE, 'swfobject.js']];
 
     public function __construct($pageCall, $id)
     {
@@ -43,7 +43,7 @@ class ClassPage extends GenericPage
 
     protected function generateContent()
     {
-        $this->addJS('?data=zones&locale='.User::$localeId.'&t='.$_SESSION['dataKey']);
+        $this->addScript([JS_FILE, '?data=zones&locale='.User::$localeId.'&t='.$_SESSION['dataKey']]);
 
         $infobox   = Lang::getInfoBoxForFlags($this->subject->getField('cuFlags'));
         $_mask     = 1 << ($this->typeId - 1);

@@ -80,7 +80,7 @@ class SqlGen
         }
 
         // handle command prompts
-        if (!self::handleCLIOpts($doScripts))
+        if (!self::handleCLIOpts($doScripts) && !$updScripts)
             return false;
 
         // check passed subscript names; limit to real scriptNames
@@ -239,7 +239,7 @@ class SqlGen
         if ($ssRef->generate($updateIds))
         {
             if (method_exists($ssRef, 'applyCustomData'))
-                $ssRef->applyCustomData();
+                return $ssRef->applyCustomData();
 
             return true;
         }

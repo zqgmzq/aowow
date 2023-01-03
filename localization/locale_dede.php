@@ -52,8 +52,11 @@ $lang = array(
         'or'            => " oder ",
         'back'          => "Zurück",
         'reputationTip' => "Rufpunkte",
-        'byUserTimeAgo' => 'Von <a href="'.HOST_URL.'/?user=%s">%1$s</a> vor %s',
+        'byUser'        => 'Von <a href="'.HOST_URL.'/?user=%1$s"%2$s>%1$s</a> ',
         'help'          => "Hilfe",
+        'status'        => "Status",
+        'yes'           => "Ja",
+        'no'            => "Nein",
 
         // filter
         'extSearch'     => "Erweiterte Suche",
@@ -80,6 +83,10 @@ $lang = array(
         'compare'       => "Vergleichen",
         'view3D'        => "3D-Ansicht",
         'findUpgrades'  => "Bessere Gegenstände finden…",
+        'report'        => "Melden",
+        'writeGuide'    => "Neuen Leitfaden erstellen",
+        'edit'          => "Bearbeiten",
+        'changelog'     => 'Änderungsprotokoll',
 
         // miscTools
         'errPageTitle'  => "Seite nicht gefunden",
@@ -112,7 +119,6 @@ $lang = array(
 
         // search
         'search'        => "Suche",
-        'searchButton'  => "Suche",
         'foundResult'   => "Suchergebnisse für",
         'noResult'      => "Keine Ergebnisse für",
         'tryAgain'      => "Bitte versucht es mit anderen Suchbegriffen oder überprüft deren Schreibweise.",
@@ -122,6 +128,7 @@ $lang = array(
         'colon'         => ': ',
         'dateFmtShort'  => "d.m.Y",
         'dateFmtLong'   => "d.m.Y \u\m H:i",
+        'timeAgo'       => 'vor %s',
 
         // error
         'intError'      => "Ein interner Fehler ist aufgetreten.",
@@ -151,6 +158,61 @@ $lang = array(
             )
         )
     ),
+    'guide' => array(
+        'myGuides'  => "Meine Leitfäden",
+        'editTitle' => "Eigenen Leitfaden bearbeiten",
+        'newTitle'  => "Leitfaden erstellen",
+        'author'    => "Autor",
+        'spec'      => "Spezialisierung",
+        'sticky'    => "Angeheftet",
+        'views'     => "Ansichten",
+        'patch'     => "Patch",
+        'added'     => "Hinzugefügt",
+        'rating'    => "Wertung",
+        'votes'     => "[span id=guiderating-value]%d[/span]/5 ([span id=guiderating-votes][n5=%d][/span] Bewertungen) [span id=guiderating][/span]",
+        'noVotes'   => "nicht genug Bewertungen [span id=guiderating][/span]",
+        'byAuthor'  => "Von %s",
+        'notFound'  => "Dieser Leitfaden existiert nicht.",
+        'clTitle'     => 'Änderungsprotokoll für "<a href="?guide=%1$d">%2$s</a>"',
+        'clStatusSet' => 'Status gesetzt auf %s',
+        'clCreated'   => 'Erstellt',
+        'clMinorEdit' => 'Kleinere Bearbeitung',
+        'editor'    => array(
+            'fullTitle'       => 'Ganze Überschrift',
+            'fullTitleTip'    => 'Der vollständige Titel des Leitfadens wird auf der Leitfadenseite verwendet und kann eine SEO-orientierte Formulierung enthalten.',
+            'name'            => 'Name',
+            'nameTip'         => 'Dies sollte ein einfacher und klarer Name für den Leitfaden sein, der an Orten wie Menüs und Leitfadenlisten verwendet werden kann.',
+            'description'     => 'Beschreibung',
+            'descriptionTip'  => 'Beschreibung, die für Suchmaschinen verwendet wird.&lt;br /&gt;&lt;br /&gt;Wenn leer, wird es automatisch generiert.',
+        //  'commentEmail'    => 'Emailbenachrichtigung',
+        //  'commentEmailTip' => 'Soll der Autor darüber benachrichtigt werden, dass Nutzer diesen Guide kommentieren?',
+            'changelog'       => 'Änderungsprotokoll für diese Änderung',
+            'changelogTip'    => 'Änderungsprotokoll für diese Änderung',
+            'save'            => 'Speichern',
+            'submit'          => 'Zur Ansicht einsenden',
+            'autoupdate'      => 'Autom. Update',
+            'showAdjPrev'     => 'Zeige angrenzende Vorschau',
+            'preview'         => 'Vorschau',
+            'class-spec'      => 'Klasse / Spez.',
+            'category'        => 'Kategorie',
+            'testGuide'       => 'Sehen Sie, wie Ihr Leitfaden aussehen wird',
+            'images'          => 'Bilder',
+            'statusTip'       => array(
+                GUIDE_STATUS_DRAFT    => 'Ihr Leitfaden ist im &quot;Entwurfs&quot;-Status und Sie sind der einzige der ihn sehen kann. Bearbeiten Sie ihn so lange Sie wollen und wenn Sie fertig sind reichen Sie ihn zur Überprüfung ein.',
+                GUIDE_STATUS_REVIEW   => 'Ihr Leitfaden wird überprüft.',
+                GUIDE_STATUS_APPROVED => 'Ihr Leitfaden wurde veröffentlicht.',
+                GUIDE_STATUS_REJECTED => 'Ihr Leitfaden wurde abgewiesen. Nachdem die Mängel behoben wurde kann er erneut zur Überprüfung eingereicht werden.',
+                GUIDE_STATUS_ARCHIVED => 'Ihr Leitfaden ist veraltet und wurde archiviert. Er wird nicht mehr in der Übersicht gelistet und ist kann nicht mehr bearbeitet werden.]',
+            )
+        ),
+        'category'  => array(
+            null,                           "Klassen",                      "Berufe",                       "Weltereignisse",                   "Neue Spieler & Stufenfortschritt",
+            "Schlachtzüge & Bosskämpfe",    "Wirtschaft & Währung",         "Erfolge",                      "Gegenstände, Haus- & Reittiere",   "Anderes"
+        ),
+        'status'    => array(
+            null,                           "Entwurf",                      "Zulassung ausstehend",         "Zugelassen",                       "Abgelehnt",                            "Archiviert"
+        )
+    ),
     'profiler' => array(
         'realm'         => "Realm",
         'region'        => "Region",
@@ -174,6 +236,13 @@ $lang = array(
             'guild'     => "Diese Gilde existiert nicht oder wurde noch nicht in die Datenbank übernommen.",
             'arenateam' => "Dieses Arena Team existiert nicht oder wurde noch nicht in die Datenbank übernommen.",
             'profile'   => "Dieser Charakter existiert nicht oder wurde noch nicht in die Datenbank übernommen."
+        ),
+        'regions' => array(
+            'us' => "Americas",
+            'eu' => "Europa",
+            'kr' => "Korea",
+            'tw' => "Taiwan",
+            'cn' => "China"
         ),
         'encounterNames'=> array(
             243 => "Die Sieben",
@@ -204,70 +273,74 @@ $lang = array(
         )
     ),
     'game' => array(
-        'achievement'   => "Erfolg",
+        // type strings
+        'npc'           => "NPC",                           // 1
+        'npcs'          => "NPCs",
+        'object'        => "Objekt",                        // 2
+        'objects'       => "Objekte",
+        'item'          => "Gegenstand",                    // 3
+        'items'         => "Gegenstände",
+        'itemset'       => "Ausrüstungsset",                // 4
+        'itemsets'      => "Ausrüstungssets",
+        'quest'         => "Quest",                         // 5
+        'quests'        => "Quests",
+        'spell'         => "Zauber",                        // 6
+        'spells'        => "Zauber",
+        'zone'          => "Zone",                          // 7
+        'zones'         => "Gebiete",
+        'faction'       => "Fraktion",                      // 8
+        'factions'      => "Fraktionen",
+        'pet'           => "Begleiter",                     // 9
+        'pets'          => "Begleiter",
+        'achievement'   => "Erfolg",                        // 10
         'achievements'  => "Erfolge",
-        'areatrigger'   => "Areatrigger",
-        'areatriggers'  => "Areatrigger",
-        'class'         => "Klasse",
+        'title'         => "Titel",                         // 11
+        'titles'        => "Titel",
+        'event'         => "Weltereigniss",                 // 12
+        'events'        => "Weltereignisse",
+        'class'         => "Klasse",                        // 13
         'classes'       => "Klassen",
-        'currency'      => "Währung",
+        'race'          => "Volk",                          // 14
+        'races'         => "Völker",
+        'skill'         => "Fertigkeit",                    // 15
+        'skills'        => "Fertigkeiten",
+        'currency'      => "Währung",                       // 17
         'currencies'    => "Währungen",
+        'sound'         => "Klang",                         // 19
+        'sounds'        => "Klänge",
+        'icon'          => "Icon",                          // 29
+        'icons'         => "Icons",
+        'profile'       => "Profil",                        // 100
+        'profiles'      => "Profile",
+        'guide'         => "Leitfaden",                     // 300
+        'guides'        => "Leitfäden",
+        'emote'         => "Emote",                         // 501
+        'emotes'        => "Emotes",
+        'enchantment'   => "Verzauberung",                  // 502
+        'enchantments'  => "Verzauberungen",
+        'areatrigger'   => "Areatrigger",                   // 503
+        'areatriggers'  => "Areatrigger",
+        'mail'          => "Brief",                         // 504
+        'mails'         => "Briefe",
+
+        'cooldown'      => "%s Abklingzeit",
         'difficulty'    => "Modus",
         'dispelType'    => "Bannart",
         'duration'      => "Dauer",
-        'emote'         => "Emote",
-        'emotes'        => "Emotes",
-        'enchantment'   => "Verzauberung",
-        'enchantments'  => "Verzauberungen",
-        'flags'         => "Flags",
-        'object'        => "Objekt",
-        'objects'       => "Objekte",
-        'glyphType'     => "Glyphenart",
-        'race'          => "Volk",
-        'races'         => "Völker",
-        'title'         => "Titel",
-        'titles'        => "Titel",
         'eventShort'    => "Ereignis",
-        'event'         => "Weltereigniss",
-        'events'        => "Weltereignisse",
-        'faction'       => "Fraktion",
-        'factions'      => "Fraktionen",
-        'cooldown'      => "%s Abklingzeit",
-        'icon'          => "Icon",
-        'icons'         => "Icons",
-        'item'          => "Gegenstand",
-        'items'         => "Gegenstände",
-        'itemset'       => "Ausrüstungsset",
-        'itemsets'      => "Ausrüstungssets",
-        'mail'          => "Brief",
-        'mails'         => "Briefe",
+        'flags'         => "Flags",
+        'glyphType'     => "Glyphenart",
+        'level'         => "Stufe",
         'mechanic'      => "Auswirkung",
         'mechAbbr'      => "Ausw.",
         'meetingStone'  => "Versammlungsstein",
-        'npc'           => "NPC",
-        'npcs'          => "NPCs",
-        'pet'           => "Begleiter",
-        'pets'          => "Begleiter",
-        'profile'       => "Profil",
-        'profiles'      => "Profile",
-        'quest'         => "Quest",
-        'quests'        => "Quests",
         'requires'      => "Benötigt %s",
         'requires2'     => "Benötigt",
         'reqLevel'      => "Benötigt Stufe %s",
         'reqSkillLevel' => "Benötigte Fertigkeitsstufe",
-        'level'         => "Stufe",
         'school'        => "Magieart",
-        'skill'         => "Fertigkeit",
-        'skills'        => "Fertigkeiten",
-        'sound'         => "Klang",
-        'sounds'        => "Klänge",
-        'spell'         => "Zauber",
-        'spells'        => "Zauber",
         'type'          => "Art",
         'valueDelim'    => " - ",                           // " bis "
-        'zone'          => "Zone",
-        'zones'         => "Gebiete",
 
         'pvp'           => "PvP",
         'honorPoints'   => "Ehrenpunkte",
@@ -291,6 +364,10 @@ $lang = array(
             "Erfolg",                       null,                           "Schwarzmarkt",                 "Entzaubert",                   "Geangelt",                     "Gesammelt",
             "Gemahlen",                     "Abgebaut",                     "Sondiert",                     "Aus Taschendiebstahl",         "Geborgen",                     "Gehäutet",
             "In-Game-Store"
+        ),
+        'pvpSources'    => array(
+            null,                           "Arenasaison 1",                "Arenasaison 2",                "Arenasaison 3",                "Arenasaison 4",
+            "Arenasaison 5",                "Arenasaison 6",                "Arenasaison 7",                "Arenasaison 8",                "2009 Arena-Turnier"
         ),
         'languages'     => array(
              1 => "Orcisch",                 2 => "Darnassisch",             3 => "Taurisch",                6 => "Zwergisch",               7 => "Gemeinsprache",           8 => "Dämonisch",
@@ -333,6 +410,20 @@ $lang = array(
             31 => "Felshetzer",             32 => "Sphärenjäger",           33 => "Sporensegler",           34 => "Netherrochen",           35 => "Schlange",               37 => "Motte",
             38 => "Schimäre",               39 => "Teufelssaurier",         41 => "Silithid",               42 => "Wurm",                   43 => "Rhinozeros",             44 => "Wespe",
             45 => "Kernhund",               46 => "Geisterbestie"
+        ),
+        'classSpecs'    => array(
+            -1 => 'Untalentiert',
+             0 => 'Hybride',
+             6 => ['Blut',           'Frost',           'Unheilig'         ],
+            11 => ['Gleichgewicht',  'Wilder Kampf',    'Wiederherstellung'],
+             3 => ['Tierherrschaft', 'Treffsicherheit', 'Überleben'        ],
+             8 => ['Arkan',          'Feuer',           'Frost'            ],
+             2 => ['Heilig',         'Schutz',          'Vergeltung'       ],
+             5 => ['Disziplin',      'Heilig',          'Schattenmagie'    ],
+             4 => ['Meucheln',       'Kampf',           'Täuschung'        ],
+             7 => ['Elementarkampf', 'Verstärkung',     'Wiederherstellung'],
+             9 => ['Gebrechen',      'Dämonologie',     'Zerstörung'       ],
+             1 => ['Waffen',         'Furor',           'Schutz'           ]
         ),
         'pvpRank'       => array(
             null,                                                           "Gefreiter / Späher",                                           "Fußknecht / Grunzer",
@@ -1157,6 +1248,7 @@ $lang = array(
         'bonusTalents'  => "%d |4Talentpunkt:Talentpunkte;",
         'spellDisplayed'=> ' (<a href="?spell=%d">%s</a> wird angezeigt)',
         'questPoolDesc' => 'Nur %d |4Quest kann:Quests können; aus diesem Tab gleichzeitig aktiv sein',
+        'autoaccept'    => 'Automatisches Annehmen',
         'questInfo'     => array(
               0 => "Normal",             1 => "Gruppe",             21 => "Leben",              41 => "PvP",                62 => "Schlachtzug",        81 => "Dungeon",            82 => "Weltereignis",
              83 => "Legendär",          84 => "Eskorte",            85 => "Heroisch",           88 => "Schlachtzug (10)",   89 => "Schlachtzug (25)"

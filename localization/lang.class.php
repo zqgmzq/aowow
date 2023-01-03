@@ -35,9 +35,19 @@ class Lang
     private static $spell;
     private static $title;
     private static $zone;
+    private static $guide;
 
     private static $emote;
     private static $enchantment;
+
+    private static $locales = array(
+        LOCALE_EN => 'English',
+        LOCALE_FR => 'Français',
+        LOCALE_DE => 'Deutsch',
+        LOCALE_CN => '简体中文',
+        LOCALE_ES => 'Español',
+        LOCALE_RU => 'Русский'
+    );
 
     public static function load($loc)
     {
@@ -52,13 +62,6 @@ class Lang
         // *cough* .. reuse-hacks (because copy-pastaing text for 5 locales sucks)
         self::$item['cat'][2] = [self::$item['cat'][2], self::$spell['weaponSubClass']];
         self::$item['cat'][2][1][14] .= ' ('.self::$item['cat'][2][0].')';
-
-        // not localized .. for whatever reason
-        self::$profiler['regions'] = array(
-            'eu' => "Europe",
-            'us' => "US & Oceanic"
-        );
-
         self::$main['moreTitles']['privilege'] = self::$privileges['_privileges'];
     }
 
@@ -252,7 +255,7 @@ class Lang
                 else if ($interactive && !$asHTML)
                 {
                     $name = '[item='.$prop.']';
-                    $ids[TYPE_ITEM][] = $prop;
+                    $ids[Type::ITEM][] = $prop;
                 }
             }
             else if ($lock['type'.$i] == LOCK_TYPE_SKILL)
@@ -276,7 +279,7 @@ class Lang
                     else if ($interactive && !$asHTML)
                     {
                         $name = '[skill='.$skills[$prop].']';
-                        $ids[TYPE_SKILL][] = $skills[$prop];
+                        $ids[Type::SKILL][] = $skills[$prop];
                     }
 
                     if ($rank > 0)
@@ -290,7 +293,7 @@ class Lang
                     else if ($interactive && !$asHTML)
                     {
                         $name = '[spell=1842]';
-                        $ids[TYPE_SPELL][] = 1842;
+                        $ids[Type::SPELL][] = 1842;
                     }
                 }
                 // exclude unusual stuff
@@ -487,6 +490,12 @@ class Lang
 
         return number_format($number, $decimals, $seps[User::$localeId][1], $no1k ? '' : $seps[User::$localeId][0]);
     }
+
+    public static function typeName(int $type) : string
+    {
+        return Util::ucFirst(self::game(Type::getFileString($type)));
+    }
+
 
     private static function vspf($var, $args)
     {

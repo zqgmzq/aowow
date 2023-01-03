@@ -1,6 +1,6 @@
 <?php
 
-define('AOWOW_REVISION', 32);
+define('AOWOW_REVISION', 33);
 define('CLI', PHP_SAPI === 'cli');
 
 
@@ -10,8 +10,8 @@ foreach ($reqExt as $r)
     if (!extension_loaded($r))
         $error .= 'Required Extension <b>'.$r."</b> was not found. Please check if it should exist, using \"<i>php -m</i>\"\n\n";
 
-if (version_compare(PHP_VERSION, '7.1.0') < 0)
-    $error .= 'PHP Version <b>7.1</b> or higher required! Your version is <b>'.PHP_VERSION."</b>.\nCore functions are unavailable!\n";
+if (version_compare(PHP_VERSION, '8.0.0') < 0)
+    $error .= 'PHP Version <b>8.0</b> or higher required! Your version is <b>'.PHP_VERSION."</b>.\nCore functions are unavailable!\n";
 
 if ($error)
 {

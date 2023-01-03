@@ -10,7 +10,7 @@ class AreaTriggerPage extends GenericPage
 {
     use TrDetailPage;
 
-    protected $type          = TYPE_AREATRIGGER;
+    protected $type          = Type::AREATRIGGER;
     protected $typeId        = 0;
     protected $tpl           = 'detail-page-generic';
     protected $path          = [0, 102];
@@ -20,7 +20,6 @@ class AreaTriggerPage extends GenericPage
 
     public function __construct($pageCall, $id)
     {
-        $this->hasComContent = false;
         $this->contribute    = CONTRIBUTE_NONE;
 
         parent::__construct($pageCall, $id);
@@ -46,7 +45,7 @@ class AreaTriggerPage extends GenericPage
 
     protected function generateContent()
     {
-        $this->addJS('?data=zones&locale='.User::$localeId.'&t='.$_SESSION['dataKey']);
+        $this->addScript([JS_FILE, '?data=zones&locale='.User::$localeId.'&t='.$_SESSION['dataKey']]);
 
         $_type = $this->subject->getField('type');
 
