@@ -54,6 +54,8 @@ SqlGen::register(new class extends SetupScript
                 ImplicitTargetA_1 AS EffectImplicitTargetA1,                 ImplicitTargetA_2 AS EffectImplicitTargetA2,                 ImplicitTargetA_3 AS EffectImplicitTargetA3,
                 ImplicitTargetB_1 AS EffectImplicitTargetB1,                 ImplicitTargetB_2 AS EffectImplicitTargetB2,                 ImplicitTargetB_3 AS EffectImplicitTargetB3,
                 EffectRadiusIndex_1 AS EffectRadiusIndex1,                     EffectRadiusIndex_2 AS EffectRadiusIndex2,                     EffectRadiusIndex_3 AS EffectRadiusIndex3,
+                EffectAura_1 AS EffectApplyAuraName1,                   EffectAura_2 AS EffectApplyAuraName2,                   EffectAura_3 AS EffectApplyAuraName3,
+                EffectAuraPeriod_1 AS EffectAmplitude1,                       EffectAuraPeriod_2 AS EffectAmplitude2,                       EffectAuraPeriod_3 AS EffectAmplitude3,
                 EffectMultipleValue_1 AS EffectMultipleValue1,                   EffectMultipleValue_2 AS EffectMultipleValue2,                   EffectMultipleValue_3 AS EffectMultipleValue3,
                 0 AS effect1ChainTarget,                0 AS effect2ChainTarget,                0 AS effect3ChainTarget,
                 EffectItemType_1 AS EffectItemType1,                        EffectItemType_2 AS EffectItemType2,                        EffectItemType_3 AS EffectItemType3,
