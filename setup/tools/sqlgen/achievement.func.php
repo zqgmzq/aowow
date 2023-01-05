@@ -75,7 +75,7 @@ SqlGen::register(new class extends SetupScript
 
         CLI::write(' - serverside achievement data');
 
-        $serverAchievements = DB::World()->select('SELECT ID, IF(requiredFaction = -1, 3, IF(requiredFaction = 0, 2, 1)) AS "faction", mapID, points, flags, count, refAchievement FROM achievement_dbc{ WHERE id IN (?a)}',
+        $serverAchievements = DB::World()->select('SELECT ID, IF(Faction = -1, 3, IF(Faction = 0, 2, 1)) AS "faction", Supercedes AS mapID, Points AS points, Flags AS flags, Minimum_Criteria AS count, Shares_Criteria AS refAchievement FROM achievement_dbc{ WHERE id IN (?a)}',
             $ids ?: DBSIMPLE_SKIP
         );
         foreach ($serverAchievements as $sa)
