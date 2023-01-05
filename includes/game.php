@@ -81,7 +81,7 @@ class Game
     );
 
     public static $trainerTemplates         = array(        // TYPE => Id => templateList
-        TYPE_CLASS => array(
+        Type::CHR_CLASS => array(
               1 => [-200001, -200002],                      // Warrior
               2 => [-200003, -200004, -200020, -200021],    // Paladin
               3 => [-200013, -200014],                      // Hunter
@@ -93,7 +93,7 @@ class Game
               9 => [-200009, -200010],                      // Warlock
              11 => [-200005, -200006]                       // Druid
         ),
-        TYPE_SKILL => array(
+        Type::SKILL => array(
             171 => [-201001, -201002, -201003],             // Alchemy
             164 => [-201004, -201005, -201006, -201007, -201008],// Blacksmithing
             333 => [-201009, -201010, -201011],             // Enchanting
