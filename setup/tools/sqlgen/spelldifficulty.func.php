@@ -21,7 +21,7 @@ SqlGen::register(new class extends SetupScript
 
         DB::Aowow()->query('INSERT INTO ?_spelldifficulty SELECT * FROM dbc_spelldifficulty');
 
-        $rows = DB::World()->select('SELECT spellid0, spellid1, spellid2, spellid3 FROM spelldifficulty_dbc');
+        $rows = DB::World()->select('SELECT DifficultySpellID_1, DifficultySpellID_2, DifficultySpellID_3, DifficultySpellID_4 FROM spelldifficulty_dbc');
         foreach ($rows as $r)
             DB::Aowow()->query('INSERT INTO ?_spelldifficulty VALUES (?a)', array_values($r));
 

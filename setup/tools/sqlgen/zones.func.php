@@ -13,7 +13,7 @@ SqlGen::register(new class extends SetupScript
 
     protected $command = 'zones';
 
-    protected $tblDependencyTC = ['access_requirement'];
+    protected $tblDependencyTC = ['dungeon_access_template', 'dungeon_access_requirements'];
     protected $dbcSourceFiles  = ['worldmaptransforms', 'worldmaparea', 'map', 'mapdifficulty', 'areatable', 'lfgdungeons', 'battlemasterlist', 'dungeonmap'];
 
     public function generate(array $ids = []) : bool
@@ -135,24 +135,49 @@ SqlGen::register(new class extends SetupScript
 
         DB::Aowow()->query('REPLACE INTO ?_zones VALUES (?a)', $baseData);
 
-        // get requirements from world.access_requirement
+        /*
+            requirement_type = 0 => achievements
+            requirement_type = 1 => quests
+            requirement_type = 2 => items
+         */
+        // get requirements from world.dungeon_access_template and dungeon_access_requirements (both ex "access_requirements")
         $zoneReq = DB::World()->select('
             SELECT
-                mapId AS ARRAY_KEY,
-                MIN(level_min) AS reqLevel,
-                MAX(IF(difficulty > 0, level_min,  0)) AS heroicLevel,
-                MAX(IF(difficulty = 0, item_level, 0)) AS reqItemLevelN,
-                MAX(IF(difficulty > 0, item_level, 0)) AS reqItemLevelH,
-                CONCAT_WS(" ", GROUP_CONCAT(IF(difficulty = 0 AND item, item, NULL) SEPARATOR " "), GROUP_CONCAT(IF(difficulty = 0 AND item2 AND item2 <> item, item2, NULL) SEPARATOR " ")) AS reqItemN,
-                CONCAT_WS(" ", GROUP_CONCAT(IF(difficulty > 0 AND item, item, NULL) SEPARATOR " "), GROUP_CONCAT(IF(difficulty > 0 AND item2 AND item2 <> item, item2, NULL) SEPARATOR " ")) AS reqItemH,
-                CONCAT_WS(" ", GROUP_CONCAT(IF(difficulty = 0 AND quest_done_A, quest_done_A, NULL) SEPARATOR " "), GROUP_CONCAT(IF(difficulty = 0 AND quest_done_H AND quest_done_H <> quest_done_A, quest_done_H, NULL) SEPARATOR " ")) AS reqQuestN,
-                CONCAT_WS(" ", GROUP_CONCAT(IF(difficulty > 0 AND quest_done_A, quest_done_A, NULL) SEPARATOR " "), GROUP_CONCAT(IF(difficulty > 0 AND quest_done_H AND quest_done_H <> quest_done_A, quest_done_H, NULL) SEPARATOR " ")) AS reqQuestH,
-                CONCAT_WS(" ", GROUP_CONCAT(IF(difficulty = 0 AND completed_achievement, completed_achievement, NULL) SEPARATOR " ")) AS reqAchievementN,
-                CONCAT_WS(" ", GROUP_CONCAT(IF(difficulty > 0 AND completed_achievement, completed_achievement, NULL) SEPARATOR " ")) AS reqAchievementH
+                map_id AS ARRAY_KEY,
+                MIN(min_level) AS reqLevel,
+                MAX(IF(difficulty > 0, min_level,  0)) AS heroicLevel,
+                MAX(IF(difficulty = 0, min_avg_item_level, 0)) AS reqItemLevelN,
+                MAX(IF(difficulty > 0, min_avg_item_level, 0)) AS reqItemLevelH,
+
+                CONCAT_WS(" ",
+                    GROUP_CONCAT(IF(difficulty = 0 AND requirement_type = 2 AND requirement_id, requirement_id, NULL) SEPARATOR " ")
+                ) AS reqItemN,
+
+                CONCAT_WS(" ",
+                    GROUP_CONCAT(IF(difficulty > 0 AND requirement_type = 2 AND requirement_id, requirement_id, NULL) SEPARATOR " ")
+                ) AS reqItemH,
+
+                CONCAT_WS(" ",
+                    GROUP_CONCAT(IF(difficulty = 0 AND requirement_type = 1 AND requirement_id, requirement_id, NULL) SEPARATOR " ")
+                ) AS reqQuestN,
+
+                CONCAT_WS(" ",
+                    GROUP_CONCAT(IF(difficulty > 0 AND requirement_type = 1 AND requirement_id, requirement_id, NULL) SEPARATOR " ")
+                ) AS reqQuestH,
+
+                CONCAT_WS(" ",
+                    GROUP_CONCAT(IF(difficulty = 0 AND requirement_type = 0 AND requirement_id, requirement_id, NULL) SEPARATOR " ")
+                ) AS reqAchievementN,
+
+                CONCAT_WS(" ",
+                    GROUP_CONCAT(IF(difficulty > 0 AND requirement_type = 0 AND requirement_id, requirement_id, NULL) SEPARATOR " ")
+                ) AS reqAchievementH
             FROM
-                access_requirement
+                dungeon_access_template dat
+            LEFT JOIN
+                dungeon_access_requirements dar ON dar.dungeon_access_id = dat.id
             GROUP BY
-                mapId
+                map_id
         ');
 
         $heroics = DB::Aowow()->selectCol('SELECT DISTINCT mapId FROM aowow_zones WHERE type IN (5, 8)');

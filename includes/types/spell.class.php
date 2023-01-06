@@ -1015,6 +1015,14 @@ class SpellList extends BaseType
         // hm, minor eval-issue. eval doesnt understand two operators without a space between them (eg. spelll: 18126)
         $formula = preg_replace('/(\+|-|\*|\/)(\+|-|\*|\/)/i', '\1 \2', $formula);
 
+        // remove first or last character if it is not a number
+        if (!is_numeric(substr($formula, -1))) {
+            $formula = substr($formula, 0, -1);
+        }
+        if (!is_numeric(substr($formula, 0, 1))) {
+            $formula = substr($formula, 1);
+        }
+
         // there should not be any letters without a leading $
         return eval('return '.$formula.';');
     }
