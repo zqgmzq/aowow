@@ -696,7 +696,8 @@ class Profiler
 
 
         // known spells
-        if ($spells = DB::Characters($realmId)->select('SELECT ?d AS id, ?d AS `type`, spell AS typeId FROM character_spell WHERE guid = ?d AND disabled = 0', $profileId, Type::SPELL, $char['guid']))
+        // if ($spells = DB::Characters($realmId)->select('SELECT ?d AS id, ?d AS `type`, spell AS typeId FROM character_spell WHERE guid = ?d AND disabled = 0', $profileId, Type::SPELL, $char['guid'])) // for TrinityCore
+        if ($spells = DB::Characters($realmId)->select('SELECT ?d AS id, ?d AS `type`, spell AS typeId FROM character_spell WHERE guid = ?d', $profileId, Type::SPELL, $char['guid'])) // for AzerothCore
             foreach (Util::createSqlBatchInsert($spells) as $s)
                 DB::Aowow()->query('INSERT INTO ?_profiler_completion (?#) VALUES '.$s, array_keys($spells[0]));
 
