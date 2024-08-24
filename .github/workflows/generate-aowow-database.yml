@@ -26,8 +26,8 @@ jobs:
 
           cd ..
 
-          revision=`mysql -u root -ppassword -P 63306 -h 127.0.0.1 -s -N -e "SELECT *  FROM acore_auth.uptime ORDER BY starttime DESC;"`
+          revision=`mysql -u root -ppassword -P 63306 -h 127.0.0.1 -s -N -e "SELECT revision  FROM acore_auth.uptime ORDER BY starttime DESC LIMIT 1;"`
 
           release_name=$(date '+%Y-%m-%d_%H-%M-%S')
-          gh release create $release_name --title "$release_name" --notes "$revision"
-          gh release upload $release_name "aowow_db.sql.zip"
+          gh release create $release_name --title "$release_name" --notes "Revision: [$revision](https://github.com/azerothcore/azerothcore-wotlk/commit/$revision)"
+          # gh release upload $release_name "aowow_db.sql.zip"
