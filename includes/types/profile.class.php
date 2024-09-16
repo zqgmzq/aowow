@@ -37,7 +37,7 @@ class ProfileList extends BaseType
                 'achievementpoints' => $this->getField('achievementpoints'),
                 'guild'             => '$"'.str_replace ('"', '', $this->curTpl['guildname']).'"',// force this to be a string
                 'guildrank'         => $this->getField('guildrank'),
-                'realm'             => Profiler::urlize($this->getField('realmName')),
+                'realm'             => Profiler::urlize($this->getField('realmName'), true),
                 'realmname'         => $this->getField('realmName'),
              // 'battlegroup'       => Profiler::urlize($this->getField('battlegroup')),        // was renamed to subregion somewhere around cata release
              // 'battlegroupname'   => $this->getField('battlegroup'),
@@ -340,7 +340,7 @@ class ProfileListFilter extends Filter
         // table key differs between remote and local :<
         $k = $this->useLocalList ? 'p' : 'c';
 
-        // name [str] - the table is case sensitive. Since i down't want to destroy indizes, lets alter the search terms
+        // name [str] - the table is case sensitive. Since i don't want to destroy indizes, lets alter the search terms
         if (!empty($_v['na']))
         {
             $lower  = $this->modularizeString([$k.'.name'], Util::lower($_v['na']),   !empty($_v['ex']) && $_v['ex'] == 'on', true);
@@ -379,7 +379,7 @@ class ProfileListFilter extends Filter
 
     protected function cbRegionCheck(&$v)
     {
-        if ($v == 'eu' || $v == 'us')
+        if (in_array($v, Util::$regions))
         {
             $this->parentCats[0] = $v;                      // directly redirect onto this region
             $v = '';                                        // remove from filter
@@ -417,7 +417,7 @@ class ProfileListFilter extends Filter
         if ($this->useLocalList)
         {
             $this->extraOpts[$k] = array(
-                'j' => ['?_profiler_completion '.$k.' ON '.$k.'.id = p.id AND '.$k.'.`type` = '.TYPE_SKILL.' AND '.$k.'.typeId = '.$skillId.' AND '.$k.'.cur '.$cr[1].' '.$cr[2], true],
+                'j' => ['?_profiler_completion '.$k.' ON '.$k.'.id = p.id AND '.$k.'.`type` = '.Type::SKILL.' AND '.$k.'.typeId = '.$skillId.' AND '.$k.'.cur '.$cr[1].' '.$cr[2], true],
                 's' => [', '.$k.'.cur AS '.$col]
             );
             return [$k.'.typeId', null, '!'];
@@ -444,7 +444,7 @@ class ProfileListFilter extends Filter
 
         if ($this->useLocalList)
         {
-            $this->extraOpts[$k] = ['j' => ['?_profiler_completion '.$k.' ON '.$k.'.id = p.id AND '.$k.'.`type` = '.TYPE_ACHIEVEMENT.' AND '.$k.'.typeId = '.$cr[2], true]];
+            $this->extraOpts[$k] = ['j' => ['?_profiler_completion '.$k.' ON '.$k.'.id = p.id AND '.$k.'.`type` = '.Type::ACHIEVEMENT.' AND '.$k.'.typeId = '.$cr[2], true]];
             return [$k.'.typeId', null, '!'];
         }
         else
@@ -573,7 +573,15 @@ class RemoteProfileList extends ProfileList
             }
             else
             {
-                trigger_error('character "'.$curTpl['name'].'" belongs to nonexistant realm #'.$r, E_USER_WARNING);
+                trigger_error('char #'.$guid.' belongs to nonexistant realm #'.$r, E_USER_WARNING);
+                unset($this->templates[$guid]);
+                continue;
+            }
+
+            // empty name
+            if (!$curTpl['name'])
+            {
+                trigger_error('char #'.$guid.' on realm #'.$r.' has empty name.', E_USER_WARNING);
                 unset($this->templates[$guid]);
                 continue;
             }
@@ -584,6 +592,7 @@ class RemoteProfileList extends ProfileList
             // talent points pre
             $talentLookup[$r][$g] = [];
             $talentSpells[] = $curTpl['class'];
+            $curTpl['activespec'] = $curTpl['activeTalentGroup'];
 
             // equalize distribution
             if ($limit != CFG_SQL_LIMIT_NONE)
@@ -614,8 +623,8 @@ class RemoteProfileList extends ProfileList
         }
 
         foreach ($talentLookup as $realm => $chars)
-            $talentLookup[$realm] = DB::Characters($realm)->selectCol('SELECT guid AS ARRAY_KEY, spell AS ARRAY_KEY2, talentGroup FROM character_talent ct WHERE guid IN (?a)', array_keys($chars));
-
+            $talentLookup[$realm] = DB::Characters($realm)->selectCol('SELECT guid AS ARRAY_KEY, spell AS ARRAY_KEY2, specMask FROM character_talent ct WHERE guid IN (?a)', array_keys($chars));
+    
         $talentSpells = DB::Aowow()->select('SELECT spell AS ARRAY_KEY, tab, `rank` FROM ?_talents WHERE class IN (?a)', array_unique($talentSpells));
 
         if ($distrib !== null)
@@ -753,7 +762,7 @@ class LocalProfileList extends ProfileList
         $realms = Profiler::getRealms();
 
         // post processing
-        $acvPoints = DB::Aowow()->selectCol('SELECT pc.id AS ARRAY_KEY, SUM(a.points) FROM ?_profiler_completion pc LEFT JOIN ?_achievement a ON a.id = pc.typeId WHERE pc.`type` = ?d AND pc.id IN (?a) GROUP BY pc.id', TYPE_ACHIEVEMENT, $this->getFoundIDs());
+        $acvPoints = DB::Aowow()->selectCol('SELECT pc.id AS ARRAY_KEY, SUM(a.points) FROM ?_profiler_completion pc LEFT JOIN ?_achievement a ON a.id = pc.typeId WHERE pc.`type` = ?d AND pc.id IN (?a) GROUP BY pc.id', Type::ACHIEVEMENT, $this->getFoundIDs());
 
         foreach ($this->iterate() as $id => &$curTpl)
         {

@@ -22,7 +22,7 @@ SqlGen::register(new class extends SetupScript
                 IF(ie.entry IS NULL, 0, ?d) AS cuFlags,          -- cuFlags
                 difficulty_entry_1, difficulty_entry_2, difficulty_entry_3,
                 KillCredit1, KillCredit2,
-                modelid1, modelid2, modelid3, modelid4,
+                IFNULL(ctm1.CreatureDisplayID, 0), IFNULL(ctm2.CreatureDisplayID, 0), IFNULL(ctm3.CreatureDisplayID, 0), IFNULL(ctm4.CreatureDisplayID, 0),
                 "" AS textureString,                            -- textureString
                 0 AS modelId,                                   -- modelId
                 0 AS humanoid,                                  -- uses creaturedisplayinfoextra
@@ -43,15 +43,17 @@ SqlGen::register(new class extends SetupScript
                 unit_class,
                 unit_flags, unit_flags2, dynamicflags,
                 family,
-                IFNULL(t.Type, 0),
-                IFNULL(t.Requirement, 0),
+                trainer_type,
+                trainer_spell,
+                trainer_class,
+                trainer_race,
                 (CASE ct.exp WHEN 0 THEN min.damage_base WHEN 1 THEN min.damage_exp1 ELSE min.damage_exp2 END) AS dmgMin,
                 (CASE ct.exp WHEN 0 THEN max.damage_base WHEN 1 THEN max.damage_exp1 ELSE max.damage_exp2 END) AS dmgMax,
                 min.attackpower AS mleAtkPwrMin,
                 max.attackpower AS mleAtkPwrMax,
                 min.rangedattackpower AS rmgAtkPwrMin,
                 max.rangedattackpower AS rmgAtkPwrMax,
-                ct.type,
+                type,
                 type_flags,
                 lootid, pickpocketloot, skinloot,
                 IFNULL(cts0.Spell, 0), IFNULL(cts1.Spell, 0), IFNULL(cts2.Spell, 0), IFNULL(cts3.Spell, 0), IFNULL(cts4.Spell, 0), IFNULL(cts5.Spell, 0), IFNULL(cts6.Spell, 0), IFNULL(cts7.Spell, 0),
@@ -76,10 +78,6 @@ SqlGen::register(new class extends SetupScript
                 creature_classlevelstats min ON ct.unit_class = min.class AND ct.minlevel = min.level
             JOIN
                 creature_classlevelstats max ON ct.unit_class = max.class AND ct.maxlevel = max.level
-            LEFT JOIN
-                creature_default_trainer cdt ON cdt.CreatureId = ct.entry
-            LEFT JOIN
-                trainer t ON t.Id = cdt.TrainerId
             LEFT JOIN
                 creature_template_locale ctl2 ON ct.entry = ctl2.entry AND ctl2.`locale` = "frFR"
             LEFT JOIN
@@ -120,6 +118,14 @@ SqlGen::register(new class extends SetupScript
                 creature_template_resistance ctr5 ON ct.entry = ctr5.CreatureID AND ctr5.School = 5
             LEFT JOIN
                 creature_template_resistance ctr6 ON ct.entry = ctr6.CreatureID AND ctr6.School = 6
+            LEFT JOIN
+                creature_template_model ctm1 ON ct.entry = ctm1.CreatureID AND ctm1.Idx = 0
+            LEFT JOIN
+                creature_template_model ctm2 ON ct.entry = ctm2.CreatureID AND ctm2.Idx = 1
+            LEFT JOIN
+                creature_template_model ctm3 ON ct.entry = ctm3.CreatureID AND ctm3.Idx = 2
+            LEFT JOIN
+                creature_template_model ctm4 ON ct.entry = ctm4.CreatureID AND ctm4.Idx = 3
             WHERE
                 ct.entry > ?d
             {
@@ -181,6 +187,8 @@ SqlGen::register(new class extends SetupScript
 
         // apply cuFlag: exCludeFromListview [for nameparts indicating internal usage]
         DB::Aowow()->query('UPDATE ?_creature SET cuFlags = cuFlags | ?d WHERE name_loc0 LIKE "%[%" OR name_loc0 LIKE "%(%" OR name_loc0 LIKE "%visual%" OR name_loc0 LIKE "%trigger%" OR name_loc0 LIKE "%credit%" OR name_loc0 LIKE "%marker%"', CUSTOM_EXCLUDE_FOR_LISTVIEW);
+
+        $this->reapplyCCFlags('creature', Type::NPC);
 
         return true;
     }

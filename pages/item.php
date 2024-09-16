@@ -10,7 +10,7 @@ class ItemPage extends genericPage
 {
     use TrDetailPage;
 
-    protected $type          = TYPE_ITEM;
+    protected $type          = Type::ITEM;
     protected $typeId        = 0;
     protected $tpl           = 'item';
     protected $path          = [0, 0];
@@ -18,9 +18,17 @@ class ItemPage extends genericPage
     protected $mode          = CACHE_TYPE_PAGE;
     protected $enhancedTT    = [];
     protected $js            = array(
-        'swfobject.js',                                     // view in 3d, ok
-        'profile.js',                                       // item upgrade search, also ok
-        'filters.js'                                        // lolwut?
+        [JS_FILE, 'swfobject.js'],                          // view in 3d, ok
+        [JS_FILE, 'profile.js'],                            // item upgrade search, also ok
+        [JS_FILE, 'filters.js']                             // lolwut?
+    );
+
+    protected $_get          = array(
+        'domain' => ['filter' => FILTER_CALLBACK, 'options' => 'GenericPage::checkDomain'],
+        'rand'   => ['filter' => FILTER_CALLBACK, 'options' => 'GenericPage::checkInt'],
+        'ench'   => ['filter' => FILTER_CALLBACK, 'options' => 'GenericPage::checkInt'],
+        'gems'   => ['filter' => FILTER_CALLBACK, 'options' => 'GenericPage::checkIntArray'],
+        'sock'   => ['filter' => FILTER_CALLBACK, 'options' => 'GenericPage::checkEmptySet']
     );
 
     private   $powerTpl      = '$WowheadPower.registerItem(%s, %d, %s);';
@@ -36,23 +44,23 @@ class ItemPage extends genericPage
         if ($this->mode == CACHE_TYPE_TOOLTIP)
         {
             // temp locale
-            if (isset($_GET['domain']))
-                Util::powerUseLocale($_GET['domain']);
+            if ($this->_get['domain'])
+                Util::powerUseLocale($this->_get['domain']);
 
-            if (isset($_GET['rand']))
-                $this->enhancedTT['r'] = $_GET['rand'];
-            if (isset($_GET['ench']))
-                $this->enhancedTT['e'] = $_GET['ench'];
-            if (isset($_GET['gems']))
-                $this->enhancedTT['g'] = explode(':', $_GET['gems']);
-            if (isset($_GET['sock']))
+            if ($this->_get['rand'])
+                $this->enhancedTT['r'] = $this->_get['rand'];
+            if ($this->_get['ench'])
+                $this->enhancedTT['e'] = $this->_get['ench'];
+            if ($this->_get['gems'])
+                $this->enhancedTT['g'] = $this->_get['gems'];
+            if ($this->_get['sock'])
                 $this->enhancedTT['s'] = '';
         }
         else if ($this->mode == CACHE_TYPE_XML)
         {
             // temp locale
-            if (isset($_GET['domain']))
-                Util::powerUseLocale($_GET['domain']);
+            if ($this->_get['domain'])
+                Util::powerUseLocale($this->_get['domain']);
 
             // allow lookup by name for xml
             if (!is_numeric($param))
@@ -113,7 +121,7 @@ class ItemPage extends genericPage
 
     protected function generateContent()
     {
-        $this->addJS('?data=weight-presets.zones&locale='.User::$localeId.'&t='.$_SESSION['dataKey']);
+        $this->addScript([JS_FILE, '?data=weight-presets.zones&locale='.User::$localeId.'&t='.$_SESSION['dataKey']]);
 
         $_flags     = $this->subject->getField('flags');
         $_slot      = $this->subject->getField('slot');
@@ -151,7 +159,7 @@ class ItemPage extends genericPage
         if ($_ = $this->subject->getField('iconId'))
         {
             $infobox[] = Util::ucFirst(lang::game('icon')).Lang::main('colon').'[icondb='.$_.' name=true]';
-            $this->extendGlobalIds(TYPE_ICON, $_);
+            $this->extendGlobalIds(Type::ICON, $_);
         }
 
         // consumable / not consumable
@@ -179,7 +187,7 @@ class ItemPage extends genericPage
         // related holiday
         if ($eId = $this->subject->getField('eventId'))
         {
-            $this->extendGlobalIds(TYPE_WORLDEVENT, $eId);
+            $this->extendGlobalIds(Type::WORLDEVENT, $eId);
             $infobox[] = Lang::game('eventShort').Lang::main('colon').'[event='.$eId.']';
         }
 
@@ -217,12 +225,12 @@ class ItemPage extends genericPage
                         if ($c < 0)                         // currency items (and honor or arena)
                         {
                             $currency[] = -$c.','.($qty / $stack);
-                            $this->extendGlobalIds(TYPE_CURRENCY, -$c);
+                            $this->extendGlobalIds(Type::CURRENCY, -$c);
                         }
                         else if ($c > 0)                    // plain items (item1,count1,item2,count2,...)
                         {
                             $tokens[$c] = $c.','.($qty / $stack);
-                            $this->extendGlobalIds(TYPE_ITEM, $c);
+                            $this->extendGlobalIds(Type::ITEM, $c);
                         }
                     }
 
@@ -341,8 +349,10 @@ class ItemPage extends genericPage
         $pageText = [];
         if ($this->pageText = Game::getPageText($this->subject->getField('pageTextId')))
         {
-            $this->addJS('Book.js');
-            $this->addCSS(['path' => 'Book.css']);
+            $this->addScript(
+                [JS_FILE,  'Book.js'],
+                [CSS_FILE, 'Book.css']
+            );
         }
 
         $this->headIcons  = [$this->subject->getField('iconString', true, true), $this->subject->getField('stackable')];
@@ -350,7 +360,7 @@ class ItemPage extends genericPage
         $this->tooltip    = $this->subject->renderTooltip(true);
         $this->redButtons = array(
             BUTTON_WOWHEAD => true,
-            BUTTON_VIEW3D  => in_array($_slot, $_visSlots) && $_model ? ['displayId' => $this->subject->getField('displayId'), 'slot' => $_slot, 'type' => TYPE_ITEM, 'typeId' => $this->typeId] : false,
+            BUTTON_VIEW3D  => in_array($_slot, $_visSlots) && $_model ? ['displayId' => $this->subject->getField('displayId'), 'slot' => $_slot, 'type' => Type::ITEM, 'typeId' => $this->typeId] : false,
             BUTTON_COMPARE => $_cu,
             BUTTON_EQUIP   => in_array($_class, [ITEM_CLASS_WEAPON, ITEM_CLASS_ARMOR]),
             BUTTON_UPGRADE => ($_cu ? ['class' => $_class, 'slot' => $_slot] : false),
@@ -431,7 +441,7 @@ class ItemPage extends genericPage
                 {
                     $data['percent'] = $perfItem[$sId]['perfectCreateChance'];
                     $data['condition'][0][$this->typeId] = [[[CND_SPELL, $perfItem[$sId]['requiredSpecialization']]]];
-                    $this->extendGlobalIDs(TYPE_SPELL, $perfItem[$sId]['requiredSpecialization']);
+                    $this->extendGlobalIDs(Type::SPELL, $perfItem[$sId]['requiredSpecialization']);
                 }
 
                 $this->lvTabs[] = ['spell', array(
@@ -525,11 +535,11 @@ class ItemPage extends genericPage
 
             foreach ($reqQuests->iterate() as $qId => $__)
             {
-                if (empty($reqQuests->requires[$qId][TYPE_ITEM]))
+                if (empty($reqQuests->requires[$qId][Type::ITEM]))
                     continue;
 
                 foreach ($reqIds as $rId)
-                    if (in_array($rId, $reqQuests->requires[$qId][TYPE_ITEM]))
+                    if (in_array($rId, $reqQuests->requires[$qId][Type::ITEM]))
                         $reqQuest[$rId] = $reqQuests->id;
             }
         }
@@ -793,7 +803,7 @@ class ItemPage extends genericPage
                         if (count($extraCols) == 3)
                             $extraCols[] = '$Listview.extraCols.condition';
 
-                        $this->extendGlobalIds(TYPE_WORLDEVENT, $e);
+                        $this->extendGlobalIds(Type::WORLDEVENT, $e);
                         $row['condition'][0][$this->typeId][] = [[CND_ACTIVE_EVENT, $e]];
                     }
 
@@ -850,7 +860,7 @@ class ItemPage extends genericPage
             if (!$boughtBy->error)
             {
                 $iCur   = new CurrencyList(array(['itemId', $this->typeId]));
-                $filter = $iCur->error ? [TYPE_ITEM => $this->typeId] : [TYPE_CURRENCY => $iCur->id];
+                $filter = $iCur->error ? [Type::ITEM => $this->typeId] : [Type::CURRENCY => $iCur->id];
 
                 $tabData = array(
                     'data'      => array_values($boughtBy->getListviewData(ITEMINFO_VENDOR, $filter)),
@@ -1047,7 +1057,7 @@ class ItemPage extends genericPage
             $xml->addChild('class')->addCData(is_array($x) ? $x[0] : $x)->addAttribute('id', $this->subject->getField('class'));
             // subclass
             $x = $this->subject->getField('class') == 2 ? Lang::spell('weaponSubClass') : Lang::item('cat', $this->subject->getField('class'), 1);
-            $xml->addChild('subclass')->addCData(is_array($x) ? (is_array($x[$this->subject->getField('subClass')]) ? $x[$this->subject->getField('subClass')][0] : $x[$this->subject->getField('subClass')]) : null)->addAttribute('id', $this->subject->getField('subClass'));
+            $xml->addChild('subclass')->addCData(is_array($x) ? (is_array($x[$this->subject->getField('subClass')]) ? $x[$this->subject->getField('subClass')][0] : $x[$this->subject->getField('subClass')]) : Lang::item('cat', $this->subject->getField('class')))->addAttribute('id', $this->subject->getField('subClass'));
             // icon + displayId
             $xml->addChild('icon', $this->subject->getField('iconString', true, true))->addAttribute('displayId', $this->subject->getField('displayId'));
             // inventorySlot

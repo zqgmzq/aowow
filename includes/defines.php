@@ -7,8 +7,9 @@ if (!defined('AOWOW_REVISION'))
  * Page
  */
 
-define('E_AOWOW',          E_ALL & ~(E_DEPRECATED | E_USER_DEPRECATED | E_STRICT));
-define('JSON_AOWOW_POWER', JSON_PRETTY_PRINT | JSON_NUMERIC_CHECK | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+define('E_AOWOW',                 E_ALL & ~(E_DEPRECATED | E_USER_DEPRECATED | E_STRICT));
+define('JSON_AOWOW_POWER',        JSON_PRETTY_PRINT | JSON_NUMERIC_CHECK | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+define('FILTER_FLAG_STRIP_AOWOW', FILTER_FLAG_STRIP_LOW | FILTER_FLAG_STRIP_HIGH | FILTER_FLAG_STRIP_BACKTICK);
 
 define('MIME_TYPE_TEXT',   'Content-Type: text/plain; charset=utf-8');
 define('MIME_TYPE_XML',    'Content-Type: text/xml; charset=utf-8');
@@ -25,35 +26,6 @@ define('ERR_MISSING_FILE', 'file %s not found');
 define('ERR_NONE',         'created file %s');
 define('ERR_MISSING_INCL', 'required function %s() could not be found at %s');
 
-// TypeIds
-define('TYPE_NPC',                          1);
-define('TYPE_OBJECT',                       2);
-define('TYPE_ITEM',                         3);
-define('TYPE_ITEMSET',                      4);
-define('TYPE_QUEST',                        5);
-define('TYPE_SPELL',                        6);
-define('TYPE_ZONE',                         7);
-define('TYPE_FACTION',                      8);
-define('TYPE_PET',                          9);
-define('TYPE_ACHIEVEMENT',                  10);
-define('TYPE_TITLE',                        11);
-define('TYPE_WORLDEVENT',                   12);
-define('TYPE_CLASS',                        13);
-define('TYPE_RACE',                         14);
-define('TYPE_SKILL',                        15);
-define('TYPE_CURRENCY',                     17);
-define('TYPE_SOUND',                        19);
-define('TYPE_ICON',                         29);
-define('TYPE_PROFILE',                      100);
-// internal types (not published to js)
-define('TYPE_GUILD',                        101);
-define('TYPE_ARENA_TEAM',                   102);
-define('TYPE_USER',                         500);
-define('TYPE_EMOTE',                        501);
-define('TYPE_ENCHANTMENT',                  502);
-define('TYPE_AREATRIGGER',                  503);
-define('TYPE_MAIL',                         504);
-
 define('CACHE_TYPE_NONE',                   0);             // page will not be cached
 define('CACHE_TYPE_PAGE',                   1);
 define('CACHE_TYPE_TOOLTIP',                2);
@@ -62,6 +34,11 @@ define('CACHE_TYPE_XML',                    4);             // only used by item
 
 define('CACHE_MODE_FILECACHE',              0x1);
 define('CACHE_MODE_MEMCACHED',              0x2);
+
+define ('CSS_FILE',                         1);
+define ('CSS_STRING',                       2);
+define ('JS_FILE',                          3);
+define ('JS_STRING',                        4);
 
 define('SEARCH_TYPE_REGULAR',               0x10000000);
 define('SEARCH_TYPE_OPEN',                  0x20000000);
@@ -89,7 +66,7 @@ define('ACC_BAN_COMMENT',                   0x08);          // cannot comment an
 define('ACC_BAN_UPLOAD',                    0x10);          // cannot upload avatar / signature files [originally: ban from data upload]
 define('ACC_BAN_SCREENSHOT',                0x20);          // cannot upload screenshots
 define('ACC_BAN_VIDEO',                     0x40);          // cannot suggest videos
-// define('ACC_BAN_FORUM',                  0x80);          // cannot use forums [not used here]
+define('ACC_BAN_GUIDE',                     0x80);          // cannot write a guide
 
 // Site Reputation/Privileges
 define('SITEREP_ACTION_REGISTER',           1);             // Registered account
@@ -133,6 +110,7 @@ define('AUTH_INTERNAL_ERR',                 6);
 define('AUTH_MODE_SELF',                    0);             // uses ?_accounts
 define('AUTH_MODE_REALM',                   1);             // uses given realm-table
 define('AUTH_MODE_EXTERNAL',                2);             // uses external script
+define('AUTH_MODE_ACORE',                   3);             // uses azerothcore auth database
 
 // Times
 define('MINUTE',                            60);
@@ -187,6 +165,10 @@ define('BUTTON_TALENT',                     6);
 define('BUTTON_EQUIP',                      7);
 define('BUTTON_PLAYLIST',                   8);
 define('BUTTON_RESYNC',                     9);
+define('BUTTON_GUIDE_REPORT',              10);
+define('BUTTON_GUIDE_NEW',                 11);
+define('BUTTON_GUIDE_EDIT',                12);
+define('BUTTON_GUIDE_LOG',                 13);
 
 // generic filter handler
 define('FILTER_CR_BOOLEAN',                 1);
@@ -263,6 +245,16 @@ define('STR_LOCALIZED',                     0x1);
 define('STR_MATCH_EXACT',                   0x2);
 define('STR_ALLOW_SHORT',                   0x4);
 
+define('RATING_COMMENT',                    1);
+define('RATING_GUIDE',                      2);
+
+define('GUIDE_STATUS_NONE',                 0);
+define('GUIDE_STATUS_DRAFT',                1);
+define('GUIDE_STATUS_REVIEW',               2);
+define('GUIDE_STATUS_APPROVED',             3);
+define('GUIDE_STATUS_REJECTED',             4);
+define('GUIDE_STATUS_ARCHIVED',             5);
+
 /*
  * Game
  */
@@ -322,8 +314,12 @@ define('PROFILER_CU_DELETED',               0x04);
 define('PROFILER_CU_PROFILE',               0x08);
 define('PROFILER_CU_NEEDS_RESYNC',          0x10);
 
+define('GUIDE_CU_NO_QUICKFACTS',            0x100);         // merge with CC_FLAG_*
+define('GUIDE_CU_NO_RATING',                0x200);
+
 define('MAX_LEVEL',                         80);
 define('MAX_SKILL',                         450);
+define('MAX_LOCALES',                       16);            // technical limitation, 6 in use here
 define('WOW_BUILD',                         12340);
 
 // Loot handles
@@ -479,6 +475,10 @@ define('LANG_GOBLIN_BINARY',                38);
 define('TEAM_ALLIANCE',                     0);
 define('TEAM_HORDE',                        1);
 define('TEAM_NEUTRAL',                      2);
+
+// Lock Types
+define('LOCK_TYPE_ITEM',                    1);
+define('LOCK_TYPE_SKILL',                   2);
 
 // Lock-Properties (also categorizes GOs)
 define('LOCK_PROPERTY_FOOTLOCKER',          1);
@@ -1663,4 +1663,5 @@ define('AT_TYPE_TELEPORT',  2);
 define('AT_TYPE_OBJECTIVE', 3);
 define('AT_TYPE_SMART',     4);
 define('AT_TYPE_SCRIPT',    5);
+
 ?>

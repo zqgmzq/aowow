@@ -3,6 +3,23 @@
 if (!defined('AOWOW_REVISION'))
     die('illegal access');
 
+// debug START (disable this in production) // Qeme
+// ini_set('display_errors', 1);
+// ini_set('display_startup_errors', 1);
+// error_reporting(E_ALL);
+
+// echo "kernel.php is being executed.<br>";
+
+// // Add error and exception handlers
+// set_exception_handler(function($e) {
+//     echo 'Uncaught exception: ', $e->getMessage(), "\n";
+// });
+
+// set_error_handler(function($errno, $errstr, $errfile, $errline) {
+//     echo "Error: [$errno] $errstr - $errfile:$errline";
+//     return true;
+// });
+// debug END
 
 if (file_exists('config/config.php'))
     require_once 'config/config.php';
@@ -130,7 +147,7 @@ function loadConfig(bool $noPHP = false) : void
 
         if ($php)
             ini_set(strtolower($k), $val);
-        else
+        else if (!defined('CFG_'.strtoupper($k)))
             define('CFG_'.strtoupper($k), $val);
     }
 }
@@ -162,6 +179,8 @@ set_error_handler(function($errNo, $errStr, $errFile, $errLine)
         $errName = 'E_RECOVERABLE_ERROR';
 
     Util::addNote($uGroup, $errName.' - '.$errStr.' @ '.$errFile. ':'.$errLine);
+    if (CLI)
+        CLI::write($errName.' - '.$errStr.' @ '.$errFile. ':'.$errLine, $errNo & 0x40A ? CLI::LOG_WARN : CLI::LOG_ERROR);
 
     if (DB::isConnectable(DB_AOWOW))
         DB::Aowow()->query('INSERT INTO ?_errors (`date`, `version`, `phpError`, `file`, `line`, `query`, `userGroups`, `message`) VALUES (UNIX_TIMESTAMP(), ?d, ?d, ?, ?d, ?, ?d, ?) ON DUPLICATE KEY UPDATE `date` = UNIX_TIMESTAMP()',
@@ -253,8 +272,12 @@ if (!CLI)
     // all strings attached..
     if (!empty($AoWoWconf['aowow']))
     {
-        if (isset($_GET['locale']) && (CFG_LOCALES & (1 << (int)$_GET['locale'])))
-            User::useLocale($_GET['locale']);
+        if (isset($_GET['locale']))
+        {
+            $loc = intVal($_GET['locale']);
+            if ($loc <= MAX_LOCALES && $loc >= 0 && (CFG_LOCALES & (1 << $loc)))
+                User::useLocale($loc);
+        }
 
         Lang::load(User::$localeString);
     }
@@ -263,7 +286,7 @@ if (!CLI)
     $str = explode('&', mb_strtolower($_SERVER['QUERY_STRING'] ?? ''), 2)[0];
     $_   = explode('=', $str, 2);
     $pageCall  = $_[0];
-    $pageParam = isset($_[1]) ? $_[1] : '';
+    $pageParam = $_[1] ?? '';
 
     Util::$wowheadLink = 'http://'.Util::$subDomains[User::$localeId].'.wowhead.com/'.$str;
 }

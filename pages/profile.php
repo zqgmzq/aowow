@@ -13,21 +13,34 @@ class ProfilePage extends GenericPage
     protected $gDataKey  = true;
     protected $mode      = CACHE_TYPE_PAGE;
 
-    protected $type      = TYPE_PROFILE;
+    protected $type      = Type::PROFILE;
 
     protected $tabId     = 1;
     protected $path      = [1, 5, 1];
     protected $tpl       = 'profile';
-    protected $js        = ['filters.js', 'TalentCalc.js', 'swfobject.js', 'profile_all.js', 'profile.js', 'Profiler.js'];
+    protected $js        = array(
+        [JS_FILE, 'filters.js'],
+        [JS_FILE, 'TalentCalc.js'],
+        [JS_FILE, 'swfobject.js'],
+        [JS_FILE, 'profile_all.js'],
+        [JS_FILE, 'profile.js'],
+        [JS_FILE, 'Profiler.js']
+    );
     protected $css       = array(
-        ['path' => 'talentcalc.css'],
-        ['path' => 'Profiler.css']
+        [CSS_FILE, 'talentcalc.css'],
+        [CSS_FILE, 'Profiler.css']
     );
 
-    private   $isCustom = false;
-    private   $profile  = null;
-    private   $rnItr    = 0;
-    private   $powerTpl = '$WowheadPower.registerProfile(%s, %d, %s);';
+    protected $_get      = array(
+        'domain' => ['filter' => FILTER_CALLBACK, 'options' => 'GenericPage::checkDomain'],
+        'new'    => ['filter' => FILTER_CALLBACK, 'options' => 'GenericPage::checkEmptySet']
+    );
+
+    private   $isCustom  = false;
+    private   $profile   = null;
+    private   $subject   = null;
+    private   $rnItr     = 0;
+    private   $powerTpl  = '$WowheadPower.registerProfile(%s, %d, %s);';
 
     public function __construct($pageCall, $pageParam)
     {
@@ -38,13 +51,13 @@ class ProfilePage extends GenericPage
         if ($params[0])
             $params[0] = Profiler::urlize($params[0]);
         if (isset($params[1]))
-            $params[1] = Profiler::urlize($params[1]);
+            $params[1] = Profiler::urlize($params[1], true);
 
         parent::__construct($pageCall, $pageParam);
 
         // temp locale
-        if ($this->mode == CACHE_TYPE_TOOLTIP && isset($_GET['domain']))
-            Util::powerUseLocale($_GET['domain']);
+        if ($this->mode == CACHE_TYPE_TOOLTIP && $this->_get['domain'])
+            Util::powerUseLocale($this->_get['domain']);
 
         if (count($params) == 1 && intval($params[0]))
         {
@@ -96,13 +109,13 @@ class ProfilePage extends GenericPage
                     $this->notFound();
             }
             // 2) not yet synced but exists on realm (and not a gm character)
-            else if (!$this->rnItr && ($char = DB::Characters($this->realmId)->selectRow('SELECT c.guid AS realmGUID, c.name, c.race, c.class, c.level, c.gender, g.guildid AS guildGUID, IFNULL(g.name, "") AS guildName, IFNULL(gm.rank, 0) AS guildRank FROM characters c LEFT JOIN guild_member gm ON gm.guid = c.guid LEFT JOIN guild g ON g.guildid = gm.guildid WHERE c.name = ? AND level <= ?d AND (extra_flags & ?d) = 0', Util::ucFirst($this->subjectName), MAX_LEVEL, Profiler::CHAR_GMFLAGS)))
+            else if (!$this->rnItr && ($char = DB::Characters($this->realmId)->selectRow('SELECT c.guid AS realmGUID, c.name, c.race, c.class, c.level, c.gender, c.at_login, g.guildid AS guildGUID, IFNULL(g.name, "") AS guildName, IFNULL(gm.rank, 0) AS guildRank FROM characters c LEFT JOIN guild_member gm ON gm.guid = c.guid LEFT JOIN guild g ON g.guildid = gm.guildid WHERE c.name = ? AND level <= ?d AND (extra_flags & ?d) = 0', Util::ucFirst($this->subjectName), MAX_LEVEL, Profiler::CHAR_GMFLAGS)))
             {
                 $char['realm']   = $this->realmId;
                 $char['cuFlags'] = PROFILER_CU_NEEDS_RESYNC;
 
                 if ($char['at_login'] & 0x1)
-                    $char['renameItr'] = DB::Aowow()->selectCell('SELECT MAX(renameItr) FROM ?_profiler_profiles WHERE realm = ?d AND realmGUID IS NOT NULL AND name = ?', $realmId, $char['name']);
+                    $char['renameItr'] = DB::Aowow()->selectCell('SELECT MAX(renameItr) FROM ?_profiler_profiles WHERE realm = ?d AND realmGUID IS NOT NULL AND name = ?', $this->realmId, $char['name']);
 
                 if ($char['guildGUID'])
                 {
@@ -125,9 +138,9 @@ class ProfilePage extends GenericPage
             else
                 $this->notFound();
         }
-        else if (($params && $params[0]) || !isset($_GET['new']))
+        else if (($params && $params[0]) || !$this->_get['new'])
             $this->notFound();
-        else if (isset($_GET['new']))
+        else if ($this->_get['new'])
             $this->mode = CACHE_TYPE_NONE;
     }
 
@@ -137,7 +150,7 @@ class ProfilePage extends GenericPage
             return;
 
         // + .titles ?
-        $this->addJS('?data=enchants.gems.glyphs.itemsets.pets.pet-talents.quick-excludes.realms.statistics.weight-presets.achievements&locale='.User::$localeId.'&t='.$_SESSION['dataKey']);
+        $this->addScript([JS_FILE, '?data=enchants.gems.glyphs.itemsets.pets.pet-talents.quick-excludes.realms.statistics.weight-presets.achievements&locale='.User::$localeId.'&t='.$_SESSION['dataKey']]);
 
         // as demanded by the raid activity tracker
         $bossIds = array(
@@ -154,11 +167,11 @@ class ProfilePage extends GenericPage
 /*          Anub,  Faerlina, Maexxna, Noth,  Heigan, Loatheb, Razuvious, Gothik, Patchwerk, Grobbulus, Gluth, Thaddius, Sapphiron, Kel'Thuzad */
 /* nax  */  15956, 15953,    15952,   15954, 15936,  16011,   16061,     16060,  16028,     15931,     15932, 15928,    15989,     15990
         );
-        $this->extendGlobalIds(TYPE_NPC, ...$bossIds);
+        $this->extendGlobalIds(Type::NPC, ...$bossIds);
 
         // dummy title from dungeon encounter
         foreach (Lang::profiler('encounterNames') as $id => $name)
-            $this->extendGlobalData([TYPE_NPC => [$id => ['name_'.User::$localeString => $name]]]);
+            $this->extendGlobalData([Type::NPC => [$id => ['name_'.User::$localeString => $name]]]);
     }
 
     protected function generatePath()
@@ -175,7 +188,7 @@ class ProfilePage extends GenericPage
     {
         $id = $this->profile;
         if (!$this->isCustom)
-            $id = "'".$this->profile[0].'.'.$this->profile[1].'.'.urlencode($this->profile[2])."'";
+            $id = "'".$this->profile[0].'.'.urlencode($this->profile[1]).'.'.urlencode($this->profile[2])."'";
 
         $power = new StdClass();
         if ($this->subject && !$this->subject->error && $this->subject->isVisibleToUser())
@@ -217,7 +230,7 @@ class ProfilePage extends GenericPage
 
     private function handleIncompleteData($params, $guid)
     {
-        if ($this->mode == CACHE_TYPE_TOOLTIP)      // enable tooltip display with basic data we just added
+        if ($this->mode == CACHE_TYPE_TOOLTIP)              // enable tooltip display with basic data we just added
         {
             $this->subject = new LocalProfileList(array(['id', $this->subjectGUID]), ['sv' => $params[1]]);
             if ($this->subject->error)
@@ -225,15 +238,18 @@ class ProfilePage extends GenericPage
 
             $this->profile = $params;
         }
-        else                                        // display empty page and queue status
+        else                                                // display empty page and queue status
         {
             $this->mode = CACHE_TYPE_NONE;
 
             // queue full fetch
-            $newId = Profiler::scheduleResync(TYPE_PROFILE, $this->realmId, $guid);
-
-            $this->doResync = ['profile', $newId];
-            $this->initialSync();
+            if ($newId = Profiler::scheduleResync(Type::PROFILE, $this->realmId, $guid))
+            {
+                $this->doResync = ['profile', $newId];
+                $this->initialSync();
+            }
+            else                                            // todo: base info should have been created in __construct .. why are we here..?
+                header('Location: ?profiles='.$params[0].'.'.$params[1].'&filter=na='.Util::ucFirst($this->subjectName).';ex=on');
         }
     }
 }

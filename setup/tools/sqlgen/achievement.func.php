@@ -9,17 +9,13 @@ if (!CLI)
 
 SqlGen::register(new class extends SetupScript
 {
-    use TrCustomData;
+    use TrCustomData;                                       // import custom data from DB
 
     protected $command = 'achievement';
 
     protected $tblDependencyAowow = ['icons'];
     protected $tblDependencyTC    = ['dbc_achievement', 'disables'];
     protected $dbcSourceFiles     = ['achievement_category', 'achievement', 'spellicon'];
-
-    private $customData = array(
-        1956 => ['itemExtra' => 44738]              // Higher Learning - item rewarded through gossip
-    );
 
     public function generate(array $ids = []) : bool
     {
@@ -79,7 +75,7 @@ SqlGen::register(new class extends SetupScript
 
         CLI::write(' - serverside achievement data');
 
-        $serverAchievements = DB::World()->select('SELECT ID, IF(requiredFaction = -1, 3, IF(requiredFaction = 0, 2, 1)) AS "faction", mapID, points, flags, count, refAchievement FROM achievement_dbc{ WHERE id IN (?a)}',
+        $serverAchievements = DB::World()->select('SELECT ID, IF(Faction = -1, 3, IF(Faction = 0, 2, 1)) AS "faction", Supercedes AS mapID, Points AS points, Flags AS flags, Minimum_Criteria AS count, Shares_Criteria AS refAchievement FROM achievement_dbc{ WHERE id IN (?a)}',
             $ids ?: DBSIMPLE_SKIP
         );
         foreach ($serverAchievements as $sa)
@@ -126,6 +122,8 @@ SqlGen::register(new class extends SetupScript
 
         if ($criteria = DB::World()->selectCol('SELECT entry FROM disables WHERE sourceType = 4'))
             DB::Aowow()->query('UPDATE aowow_achievement a JOIN aowow_achievementcriteria ac ON a.id = ac.refAchievementId SET a.cuFlags = ?d WHERE ac.id IN (?a)', CUSTOM_DISABLED, $criteria);
+
+        $this->reapplyCCFlags('achievement', Type::ACHIEVEMENT);
 
         return true;
     }

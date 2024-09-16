@@ -17,98 +17,34 @@ SqlGen::register(new class extends SetupScript
     protected $dbcSourceFiles  = ['worldmaparea', 'map', 'dungeonmap', 'taxipathnode', 'soundemitters', 'areatrigger', 'areatable'];
 
     private $querys = array(
-        1 => ['SELECT c.guid, 1 AS "type", c.id AS typeId, c.spawntimesecs AS respawn, c.phaseMask, c.zoneId AS areaId, c.map, IFNULL(ca.path_id, 0) AS pathId, c.position_y AS `posX`, c.position_x AS `posY` ' .
+        1 => ['SELECT c.guid, 1 AS "type", c.id1 AS typeId, c.spawntimesecs AS respawn, c.phaseMask, c.zoneId AS areaId, c.map, IFNULL(ca.path_id, 0) AS pathId, c.position_y AS `posX`, c.position_x AS `posY` ' .
               'FROM creature c LEFT JOIN creature_addon ca ON ca.guid = c.guid',
-              ' - assembling creature spawns', TYPE_NPC],
+              ' - assembling creature spawns', Type::NPC],
 
         2 => ['SELECT c.guid, 2 AS "type", c.id AS typeId, ABS(c.spawntimesecs) AS respawn, c.phaseMask, c.zoneId AS areaId, c.map, 0 as pathId, c.position_y AS `posX`, c.position_x AS `posY` ' .
               'FROM gameobject c',
-              ' - assembling gameobject spawns', TYPE_OBJECT],
+              ' - assembling gameobject spawns', Type::OBJECT],
 
         3 => ['SELECT id AS "guid", 19 AS "type", soundId AS typeId, 0 AS respawn, 0 AS phaseMask, 0 AS areaId, mapId AS "map", 0 AS pathId, posX, posY ' .
               'FROM dbc_soundemitters',
-              ' - assembling sound emitter spawns', TYPE_SOUND],
+              ' - assembling sound emitter spawns', Type::SOUND],
 
         4 => ['SELECT id AS "guid", 503 AS "type", id AS typeId, 0 AS respawn, 0 AS phaseMask, 0 AS areaId, mapId AS "map", 0 AS pathId, posX, posY ' .
               'FROM dbc_areatrigger',
-              ' - assembling areatrigger spawns', TYPE_AREATRIGGER],
+              ' - assembling areatrigger spawns', Type::AREATRIGGER],
 
         5 => ['SELECT c.guid, w.entry AS "npcOrPath", w.pointId AS "point", c.zoneId AS areaId, c.map, w.waittime AS "wait", w.location_y AS `posX`, w.location_x AS `posY` ' .
-              'FROM creature c JOIN script_waypoint w ON c.id = w.entry',
-              ' - assembling waypoints from table script_waypoint', TYPE_NPC],
+              'FROM creature c JOIN script_waypoint w ON c.id1 = w.entry',
+              ' - assembling waypoints from table script_waypoint', Type::NPC],
 
         6 => ['SELECT c.guid, w.entry AS "npcOrPath", w.pointId AS "point", c.zoneId AS areaId, c.map, 0 AS "wait", w.position_y AS `posX`, w.position_x AS `posY` ' .
-              'FROM creature c JOIN waypoints w ON c.id = w.entry',
-              ' - assembling waypoints from table waypoints', TYPE_NPC],
+              'FROM creature c JOIN waypoints w ON c.id1 = w.entry',
+              ' - assembling waypoints from table waypoints', Type::NPC],
 
         7 => ['SELECT c.guid, -w.id AS "npcOrPath", w.point, c.zoneId AS areaId, c.map, w.delay AS "wait", w.position_y AS `posX`, w.position_x AS `posY` ' .
               'FROM creature c JOIN creature_addon ca ON ca.guid = c.guid JOIN waypoint_data w ON w.id = ca.path_id WHERE ca.path_id <> 0',
-              ' - assembling waypoints from table waypoint_data', TYPE_NPC]
+              ' - assembling waypoints from table waypoint_data', Type::NPC]
     );
-
-    private $alphaMapCache = [];
-
-    private function alphaMapCheck(int $areaId, array &$set) : bool
-    {
-        $file = 'setup/generated/alphaMaps/'.$areaId.'.png';
-        if (!file_exists($file))                            // file does not exist (probably instanced area)
-            return false;
-
-        // invalid and corner cases (literally)
-        if (!is_array($set) || empty($set['posX']) || empty($set['posY']) || $set['posX'] >= 100 || $set['posY'] >= 100)
-        {
-            $set = null;
-            return true;
-        }
-
-        if (empty($this->alphaMapCache[$areaId]))
-            $this->alphaMapCache[$areaId] = imagecreatefrompng($file);
-
-        // alphaMaps are 1000 x 1000, adapt points [black => valid point]
-        if (!imagecolorat($this->alphaMapCache[$areaId], $set['posX'] * 10, $set['posY'] * 10))
-            $set = null;
-
-        return true;
-    }
-
-    private function checkCoords(array $points) : array
-    {
-        $result   = [];
-        $capitals = array(                              // capitals take precedence over their surroundings
-            1497, 1637, 1638, 3487,                     // Undercity,      Ogrimmar,  Thunder Bluff, Silvermoon City
-            1519, 1537, 1657, 3557,                     // Stormwind City, Ironforge, Darnassus,     The Exodar
-            3703, 4395                                  // Shattrath City, Dalaran
-        );
-
-        foreach ($points as $res)
-        {
-            if ($this->alphaMapCheck($res['areaId'], $res))
-            {
-                if (!$res)
-                    continue;
-
-                // some rough measure how central the spawn is on the map (the lower the number, the better)
-                // 0: perfect center; 1: touches a border
-                $q = abs( (($res['posX'] - 50) / 50) * (($res['posY'] - 50) / 50) );
-
-                if (empty($result) || $result[0] > $q)
-                    $result = [$q, $res];
-            }
-            else if (in_array($res['areaId'], $capitals)) // capitals (auto-discovered) and no hand-made alphaMap available
-                return $res;
-            else if (empty($result))                    // add with lowest quality if alpha map is missing
-                $result = [1.0, $res];
-        }
-
-        // spawn does not really match on a map, but we need at least one result
-        if (!$result)
-        {
-            usort($points, function ($a, $b) { return ($a['dist'] < $b['dist']) ? -1 : 1; });
-            $result = [1.0, $points[0]];
-        }
-
-        return $result[1];
-    }
 
     public function generate(array $ids = []) : bool
     {
@@ -207,7 +143,7 @@ SqlGen::register(new class extends SetupScript
                     if (in_array($spawn['map'], [564, 580]))    // Black Temple and Sunwell floor offset bullshit
                         $points[0]['floor']++;
 
-                    $final = $area ? $points[0] : $this->checkCoords($points);
+                    $final = $area ? $points[0] : Game::checkCoords($points);
                 }
 
                 if ($idx < 5)
@@ -251,7 +187,7 @@ SqlGen::register(new class extends SetupScript
 
         // get vehicle template accessories
         $accessories = DB::World()->select('
-            SELECT vta.accessory_entry AS typeId,  c.guid,  vta.entry, count(1) AS nSeats FROM vehicle_template_accessory vta LEFT JOIN creature c ON c.id = vta.entry GROUP BY accessory_entry,  c.guid UNION
+            SELECT vta.accessory_entry AS typeId,  c.guid,  vta.entry, count(1) AS nSeats FROM vehicle_template_accessory vta LEFT JOIN creature c ON c.id1 = vta.entry GROUP BY accessory_entry,  c.guid UNION
             SELECT  va.accessory_entry AS typeId, va.guid, 0 AS entry, count(1) AS nSeats FROM vehicle_accessory           va                                          GROUP BY accessory_entry, va.guid');
 
         // accessories may also be vehicles (e.g. "Kor'kron Infiltrator" is seated on "Kor'kron Suppression Turret" is seated on "Kor'kron Troop Transport")
@@ -266,9 +202,9 @@ SqlGen::register(new class extends SetupScript
             {
                 $vehicles = [];
                 if ($data['guid'])                          // vehicle already spawned
-                    $vehicles = DB::Aowow()->select('SELECT s.areaId, s.posX, s.posY, s.floor FROM ?_spawns s WHERE s.guid   = ?d AND s.type = ?d', $data['guid'], TYPE_NPC);
+                    $vehicles = DB::Aowow()->select('SELECT s.areaId, s.posX, s.posY, s.floor FROM ?_spawns s WHERE s.guid   = ?d AND s.type = ?d', $data['guid'], Type::NPC);
                 else if ($data['entry'])                    // vehicle on unspawned vehicle action
-                    $vehicles = DB::Aowow()->select('SELECT s.areaId, s.posX, s.posY, s.floor FROM ?_spawns s WHERE s.typeId = ?d AND s.type = ?d', $data['entry'], TYPE_NPC);
+                    $vehicles = DB::Aowow()->select('SELECT s.areaId, s.posX, s.posY, s.floor FROM ?_spawns s WHERE s.typeId = ?d AND s.type = ?d', $data['entry'], Type::NPC);
 
                 if ($vehicles)
                 {
@@ -277,7 +213,7 @@ SqlGen::register(new class extends SetupScript
                         for ($i = 0; $i < $data['nSeats']; $i++)
                             DB::Aowow()->query('
                                 REPLACE INTO ?_spawns (`guid`, `type`, `typeId`, `respawn`, `spawnMask`, `phaseMask`, `areaId`, `floor`, `posX`, `posY`, `pathId`) VALUES
-                                (?d, ?d, ?d, 0, 0, 1, ?d, ?d, ?f, ?f, 0)', --$vGuid, TYPE_NPC, $data['typeId'], $v['areaId'], $v['floor'], $v['posX'], $v['posY']);
+                                (?d, ?d, ?d, 0, 0, 1, ?d, ?d, ?f, ?f, 0)', --$vGuid, Type::NPC, $data['typeId'], $v['areaId'], $v['floor'], $v['posX'], $v['posY']);
 
                     unset($accessories[$idx]);
                 }

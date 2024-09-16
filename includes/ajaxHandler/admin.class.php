@@ -5,36 +5,37 @@ if (!defined('AOWOW_REVISION'))
 
 class AjaxAdmin extends AjaxHandler
 {
-    protected $validParams = ['screenshots', 'siteconfig', 'weight-presets', 'spawn-override'];
+    protected $validParams = ['screenshots', 'siteconfig', 'weight-presets', 'spawn-override', 'guide', 'comment'];
     protected $_get        = array(
-        'action' => [FILTER_SANITIZE_STRING,     FILTER_FLAG_STRIP_LOW | FILTER_FLAG_STRIP_HIGH   ],
-        'id'     => [FILTER_CALLBACK,            ['options' => 'AjaxHandler::checkIdListUnsigned']],
-        'key'    => [FILTER_CALLBACK,            ['options' => 'AjaxAdmin::checkKey']             ],
-        'all'    => [FILTER_CALLBACK,            ['options' => 'AjaxHandler::checkFulltext']      ],
-        'type'   => [FILTER_CALLBACK,            ['options' => 'AjaxHandler::checkInt']           ],
-        'typeid' => [FILTER_CALLBACK,            ['options' => 'AjaxHandler::checkInt']           ],
-        'user'   => [FILTER_CALLBACK,            ['options' => 'AjaxAdmin::checkUser']            ],
-        'val'    => [FILTER_CALLBACK,            ['options' => 'AjaxHandler::checkFulltext']      ],
-        'guid'   => [FILTER_CALLBACK,            ['options' => 'AjaxHandler::checkInt']           ],
-        'area'   => [FILTER_CALLBACK,            ['options' => 'AjaxHandler::checkInt']           ],
-        'floor'  => [FILTER_CALLBACK,            ['options' => 'AjaxHandler::checkInt']           ]
+        'action' => ['filter' => FILTER_UNSAFE_RAW, 'flags' => FILTER_FLAG_STRIP_AOWOW           ],
+        'id'     => ['filter' => FILTER_CALLBACK, 'options' => 'AjaxHandler::checkIdListUnsigned'],
+        'key'    => ['filter' => FILTER_CALLBACK, 'options' => 'AjaxAdmin::checkKey'             ],
+        'all'    => ['filter' => FILTER_CALLBACK, 'options' => 'AjaxHandler::checkFulltext'      ],
+        'type'   => ['filter' => FILTER_CALLBACK, 'options' => 'AjaxHandler::checkInt'           ],
+        'typeid' => ['filter' => FILTER_CALLBACK, 'options' => 'AjaxHandler::checkInt'           ],
+        'user'   => ['filter' => FILTER_CALLBACK, 'options' => 'AjaxAdmin::checkUser'            ],
+        'val'    => ['filter' => FILTER_CALLBACK, 'options' => 'AjaxHandler::checkFulltext'      ],
+        'guid'   => ['filter' => FILTER_CALLBACK, 'options' => 'AjaxHandler::checkInt'           ],
+        'area'   => ['filter' => FILTER_CALLBACK, 'options' => 'AjaxHandler::checkInt'           ],
+        'floor'  => ['filter' => FILTER_CALLBACK, 'options' => 'AjaxHandler::checkInt'           ]
     );
     protected $_post       = array(
-        'alt'    => [FILTER_SANITIZE_STRING,     FILTER_FLAG_STRIP_LOW                 ],
-        'id'     => [FILTER_CALLBACK,            ['options' => 'AjaxHandler::checkInt']],
-        'scale'  => [FILTER_CALLBACK,            ['options' => 'AjaxAdmin::checkScale']],
-        '__icon' => [FILTER_CALLBACK,            ['options' => 'AjaxAdmin::checkKey']  ]
+        'alt'    => ['filter' => FILTER_UNSAFE_RAW, 'flags' => FILTER_FLAG_STRIP_AOWOW],
+        'id'     => ['filter' => FILTER_CALLBACK, 'options' => 'AjaxHandler::checkInt'],
+        'scale'  => ['filter' => FILTER_CALLBACK, 'options' => 'AjaxAdmin::checkScale'],
+        '__icon' => ['filter' => FILTER_CALLBACK, 'options' => 'AjaxAdmin::checkKey'  ],
+        'status' => ['filter' => FILTER_CALLBACK, 'options' => 'AjaxHandler::checkInt'],
+        'msg'    => ['filter' => FILTER_UNSAFE_RAW, 'flags' => FILTER_FLAG_STRIP_AOWOW]
     );
 
     public function __construct(array $params)
     {
         parent::__construct($params);
 
-        // requires 'action' parameter in any case
-        if (!$this->_get['action'] || !$this->params)
+        if (!$this->params)
             return;
 
-        if ($this->params[0] == 'screenshots')
+        if ($this->params[0] == 'screenshots' && $this->_get['action'])
         {
             if (!User::isInGroup(U_GROUP_ADMIN | U_GROUP_BUREAU | U_GROUP_SCREENSHOT))
                 return;
@@ -54,7 +55,7 @@ class AjaxAdmin extends AjaxHandler
             else if ($this->_get['action'] == 'relocate')
                 $this->handler = 'ssRelocate';
         }
-        else if ($this->params[0] == 'siteconfig')
+        else if ($this->params[0] == 'siteconfig' && $this->_get['action'])
         {
             if (!User::isInGroup(U_GROUP_DEV | U_GROUP_ADMIN))
                 return;
@@ -66,7 +67,7 @@ class AjaxAdmin extends AjaxHandler
             else if ($this->_get['action'] == 'update')
                 $this->handler = 'confUpdate';
         }
-        else if ($this->params[0] == 'weight-presets')
+        else if ($this->params[0] == 'weight-presets' && $this->_get['action'])
         {
             if (!User::isInGroup(U_GROUP_DEV | U_GROUP_ADMIN | U_GROUP_BUREAU))
                 return;
@@ -80,6 +81,20 @@ class AjaxAdmin extends AjaxHandler
                 return;
 
             $this->handler = 'spawnPosFix';
+        }
+        else if ($this->params[0] == 'guide')
+        {
+            if (!User::isInGroup(U_GROUP_STAFF))
+                return;
+
+            $this->handler = 'guideManage';
+        }
+        else if ($this->params[0] == 'comment')
+        {
+            if (!User::isInGroup(U_GROUP_ADMIN | U_GROUP_BUREAU | U_GROUP_MOD))
+                return;
+
+            $this->handler = 'commentOutOfDate';
         }
     }
 
@@ -186,7 +201,7 @@ class AjaxAdmin extends AjaxHandler
                 DB::Aowow()->query('UPDATE ?_screenshots SET status = ?d, userIdApprove = ?d WHERE id = ?d', CC_FLAG_APPROVED, User::$id, $id);
                 Util::gainSiteReputation($ssEntry['userIdOwner'], SITEREP_ACTION_UPLOAD, ['id' => $id, 'what' => 1, 'date' => $ssEntry['date']]);
                 // flag DB entry as having screenshots
-                if (Util::$typeClasses[$ssEntry['type']] && ($tbl = get_class_vars(Util::$typeClasses[$ssEntry['type']])['dataTable']))
+                if ($tbl = Type::getClassAttrib($ssEntry['type'], 'dataTable'))
                     DB::Aowow()->query('UPDATE '.$tbl.' SET cuFlags = cuFlags | ?d WHERE id = ?d', CUSTOM_HAS_SCREENSHOT, $ssEntry['typeId']);
             }
             else
@@ -267,7 +282,7 @@ class AjaxAdmin extends AjaxHandler
         {
             $typeIds  = explode(',', $typeIds);
             $toUnflag = DB::Aowow()->selectCol('SELECT typeId AS ARRAY_KEY, IF(BIT_OR(`status`) & ?d, 1, 0) AS hasMore FROM ?_screenshots WHERE `type` = ?d AND typeId IN (?a) GROUP BY typeId HAVING hasMore = 0', CC_FLAG_APPROVED, $type, $typeIds);
-            if ($toUnflag && Util::$typeClasses[$type] && ($tbl = get_class_vars(Util::$typeClasses[$type])['dataTable']))
+            if ($toUnflag && ($tbl = Type::getClassAttrib($type, 'dataTable')))
                 DB::Aowow()->query('UPDATE '.$tbl.' SET cuFlags = cuFlags & ~?d WHERE id IN (?a)', CUSTOM_HAS_SCREENSHOT, array_keys($toUnflag));
         }
     }
@@ -286,8 +301,8 @@ class AjaxAdmin extends AjaxHandler
         [$type, $oldTypeId] = array_values(DB::Aowow()->selectRow('SELECT type, typeId FROM ?_screenshots WHERE id = ?d', $id));
         $typeId                 = (int)$this->_get['typeid'];
 
-        $tc = new Util::$typeClasses[$type]([['id', $typeId]]);
-        if (!$tc->error)
+        $tc = Type::newList($type, [['id', $typeId]]);
+        if ($tc && !$tc->error)
         {
             // move screenshot
             DB::Aowow()->query('UPDATE ?_screenshots SET typeId = ?d WHERE id = ?d', $typeId, $id);
@@ -301,7 +316,7 @@ class AjaxAdmin extends AjaxHandler
                 DB::Aowow()->query('UPDATE '.$tc::$dataTable.' SET cuFlags = cuFlags & ~?d WHERE id = ?d', CUSTOM_HAS_SCREENSHOT, $oldTypeId);
         }
         else
-            trigger_error('AjaxAdmin::ssRelocate - invalid typeId #'.$typeId.' for type '.$tc::$brickFile, E_USER_ERROR);
+            trigger_error('AjaxAdmin::ssRelocate - invalid typeId #'.$typeId.' for type #'.$type, E_USER_ERROR);
     }
 
     protected function confAdd() : string
@@ -405,7 +420,7 @@ class AjaxAdmin extends AjaxHandler
         $area  = $this->_get['area'];
         $floor = $this->_get['floor'];
 
-        if (!in_array($type, [TYPE_NPC, TYPE_OBJECT, TYPE_SOUND, TYPE_AREATRIGGER]))
+        if (!in_array($type, [Type::NPC, Type::OBJECT, Type::SOUND, Type::AREATRIGGER]))
             return '-3';
 
         DB::Aowow()->query('REPLACE INTO ?_spawns_override VALUES (?d, ?d, ?d, ?d, ?d)', $type, $guid, $area, $floor, AOWOW_REVISION);
@@ -423,7 +438,7 @@ class AjaxAdmin extends AjaxHandler
                 );
 
                 // if creature try for waypoints
-                if ($type == TYPE_NPC)
+                if ($type == Type::NPC)
                 {
                     $jobs = array(
                         'SELECT -w.id AS `entry`, w.point AS `pointId`, w.position_y AS `posX`, w.position_x AS `posY` FROM creature_addon ca JOIN waypoint_data w ON w.id = ca.path_id WHERE ca.guid = ?d AND ca.path_id <> 0',
@@ -467,6 +482,84 @@ class AjaxAdmin extends AjaxHandler
         return '-1';
     }
 
+    protected function guideManage() : string
+    {
+        $update = function (int $id, int $status, ?string $msg = null) : bool
+        {
+            if (!DB::Aowow()->query('UPDATE ?_guides SET `status` = ?d WHERE `id` = ?d', $status, $id))
+                return false;
+
+            // set display rev to latest
+            if ($status == GUIDE_STATUS_APPROVED)
+                DB::Aowow()->query('UPDATE ?_guides SET `rev` = (SELECT `rev` FROM ?_articles WHERE `type` = ?d AND `typeId` = ?d ORDER BY `rev` DESC LIMIT 1) WHERE `id` = ?d', Type::GUIDE, $id, $id);
+
+            DB::Aowow()->query('INSERT INTO ?_guides_changelog (`id`, `date`, `userId`, `status`) VALUES (?d, ?d, ?d, ?d)', $id, time(), User::$id, $status);
+            if ($msg)
+                DB::Aowow()->query('INSERT INTO ?_guides_changelog (`id`, `date`, `userId`, `msg`)    VALUES (?d, ?d, ?d, ?)' , $id, time(), User::$id, $msg);
+            return true;
+        };
+
+        if (!$this->_post['id'])
+            trigger_error('AjaxHander::guideManage - malformed request: id: '.$this->_post['id'].', status: '.$this->_post['status']);
+        else
+        {
+            $guide = DB::Aowow()->selectRow('SELECT `userId`, `status` FROM ?_guides WHERE `id` = ?d', $this->_post['id']);
+            if (!$guide)
+                trigger_error('AjaxHander::guideManage - guide #'.$this->_post['id'].' not found');
+            else
+            {
+                if ($this->_post['status'] == $guide['status'])
+                    trigger_error('AjaxHander::guideManage - guide #'.$this->_post['id'].' already has status #'.$this->_post['status']);
+                else
+                {
+                    if ($this->_post['status'] == GUIDE_STATUS_APPROVED)
+                    {
+                        if ($update($this->_post['id'], GUIDE_STATUS_APPROVED, $this->_post['msg']))
+                        {
+                            Util::gainSiteReputation($guide['userId'], SITEREP_ACTION_ARTICLE, ['id' => $this->_post['id']]);
+                            return '1';
+                        }
+                        else
+                            return '-2';
+                    }
+                    else if ($this->_post['status'] == GUIDE_STATUS_REJECTED)
+                        return $update($this->_post['id'], GUIDE_STATUS_REJECTED, $this->_post['msg']) ? '1' : '-2';
+                    else
+                        trigger_error('AjaxHander::guideManage - unhandled status change request');
+                }
+            }
+        }
+
+        return '-1';
+    }
+
+    protected function commentOutOfDate() : string
+    {
+        $ok = false;
+        switch ($this->_post['status'])
+        {
+            case 0:                                         // up to date
+                if ($ok = DB::Aowow()->query('UPDATE ?_comments SET `flags` = `flags` & ~?d WHERE `id` = ?d', CC_FLAG_OUTDATED, $this->_post['id']))
+                    if ($rep = new Report(Report::MODE_COMMENT, Report::CO_OUT_OF_DATE, $this->_post['id']))
+                        $rep->close(Report::STATUS_CLOSED_WONTFIX);
+                break;
+            case 1:                                         // outdated, mark as deleted and clear other flags (sticky + outdated)
+                if ($ok = DB::Aowow()->query('UPDATE ?_comments SET `flags` = ?d, `deleteUserId` = ?d, `deleteDate` = ?d WHERE `id` = ?d', CC_FLAG_DELETED, User::$id, time(), $this->_post['id']))
+                    if ($rep = new Report(Report::MODE_COMMENT, Report::CO_OUT_OF_DATE, $this->_post['id']))
+                        $rep->close(Report::STATUS_CLOSED_SOLVED);
+        break;
+            default:
+                trigger_error('AjaxHandler::comentOutOfDate - called with invalid status');
+        }
+
+        return $ok ? '1' : '0';
+    }
+
+
+    /***************************/
+    /* additional input filter */
+    /***************************/
+
     protected static function checkKey(string $val) : string
     {
         // expecting string
@@ -494,6 +587,11 @@ class AjaxAdmin extends AjaxHandler
         return '';
     }
 
+
+    /**********/
+    /* helper */
+    /**********/
+
     private static function confOnChange(string $key, string $val, string &$msg) : bool
     {
         $fn = $buildList = null;
@@ -511,6 +609,9 @@ class AjaxAdmin extends AjaxHandler
                 break;
             case 'static_host':
                 $buildList = 'searchplugin,power,searchboxBody,searchboxScript';
+                break;
+            case 'contact_email':
+                $buildList = 'markup';
                 break;
             case 'locales':
                 $buildList = 'locales';

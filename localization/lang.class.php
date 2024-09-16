@@ -35,9 +35,19 @@ class Lang
     private static $spell;
     private static $title;
     private static $zone;
+    private static $guide;
 
     private static $emote;
     private static $enchantment;
+
+    private static $locales = array(
+        LOCALE_EN => 'English',
+        LOCALE_FR => 'Français',
+        LOCALE_DE => 'Deutsch',
+        LOCALE_CN => '简体中文',
+        LOCALE_ES => 'Español',
+        LOCALE_RU => 'Русский'
+    );
 
     public static function load($loc)
     {
@@ -52,13 +62,6 @@ class Lang
         // *cough* .. reuse-hacks (because copy-pastaing text for 5 locales sucks)
         self::$item['cat'][2] = [self::$item['cat'][2], self::$spell['weaponSubClass']];
         self::$item['cat'][2][1][14] .= ' ('.self::$item['cat'][2][0].')';
-
-        // not localized .. for whatever reason
-        self::$profiler['regions'] = array(
-            'eu' => "Europe",
-            'us' => "US & Oceanic"
-        );
-
         self::$main['moreTitles']['privilege'] = self::$privileges['_privileges'];
     }
 
@@ -227,9 +230,10 @@ class Lang
         return $tmp;
     }
 
-    public static function getLocks($lockId, $interactive = false)
+    public static function getLocks(int $lockId, ?array &$ids = [], bool $interactive = false, bool $asHTML = false) : array
     {
         $locks = [];
+        $ids   = [];
         $lock  = DB::Aowow()->selectRow('SELECT * FROM ?_lock WHERE id = ?d', $lockId);
         if (!$lock)
             return $locks;
@@ -240,47 +244,71 @@ class Lang
             $rank = $lock['reqSkill'.$i];
             $name = '';
 
-            if ($lock['type'.$i] == 1)                      // opened by item
+            if ($lock['type'.$i] == LOCK_TYPE_ITEM)
             {
                 $name = ItemList::getName($prop);
                 if (!$name)
                     continue;
 
-                if ($interactive)
+                if ($interactive && $asHTML)
                     $name = '<a class="q1" href="?item='.$prop.'">'.$name.'</a>';
+                else if ($interactive && !$asHTML)
+                {
+                    $name = '[item='.$prop.']';
+                    $ids[Type::ITEM][] = $prop;
+                }
             }
-            else if ($lock['type'.$i] == 2)                 // opened by skill
+            else if ($lock['type'.$i] == LOCK_TYPE_SKILL)
             {
-                // exclude unusual stuff
-                if (!in_array($prop, [1, 2, 3, 4, 9, 16, 20]))
-                    continue;
-
                 $name = self::spell('lockType', $prop);
                 if (!$name)
                     continue;
 
-                if ($interactive)
+                // skills
+                if (in_array($prop, [1, 2, 3, 20]))
                 {
-                    $skill = 0;
-                    switch ($prop)
+                    $skills = array(
+                        1 => SKILL_LOCKPICKING,
+                        2 => SKILL_HERBALISM,
+                        3 => SKILL_MINING,
+                       20 => SKILL_INSCRIPTION
+                   );
+
+                    if ($interactive && $asHTML)
+                        $name = '<a href="?skill='.$skills[$prop].'">'.$name.'</a>';
+                    else if ($interactive && !$asHTML)
                     {
-                        case  1: $skill = 633; break;       // Lockpicking
-                        case  2: $skill = 182; break;       // Herbing
-                        case  3: $skill = 186; break;       // Mining
-                        case 20: $skill = 773; break;       // Scribing
+                        $name = '[skill='.$skills[$prop].']';
+                        $ids[Type::SKILL][] = $skills[$prop];
                     }
 
-                    if ($skill)
-                        $name = '<a href="?skill='.$skill.'">'.$name.'</a>';
+                    if ($rank > 0)
+                        $name .= ' ('.$rank.')';
                 }
-
-                if ($rank > 0)
-                    $name .= ' ('.$rank.')';
+                // Lockpicking
+                else if ($prop == 4)
+                {
+                    if ($interactive && $asHTML)
+                        $name = '<a href="?spell=1842">'.$name.'</a>';
+                    else if ($interactive && !$asHTML)
+                    {
+                        $name = '[spell=1842]';
+                        $ids[Type::SPELL][] = 1842;
+                    }
+                }
+                // exclude unusual stuff
+                else if (User::isInGroup(U_GROUP_STAFF))
+                {
+                    if ($rank > 0)
+                        $name .= ' ('.$rank.')';
+                }
+                else
+                    continue;
             }
             else
                 continue;
 
-            $locks[$lock['type'.$i] == 1 ? $prop : -$prop] = sprintf(self::game('requires'), $name);
+            $locks[$lock['type'.$i] == LOCK_TYPE_ITEM ? $prop : -$prop] = $name;
         }
 
         return $locks;
@@ -462,6 +490,12 @@ class Lang
 
         return number_format($number, $decimals, $seps[User::$localeId][1], $no1k ? '' : $seps[User::$localeId][0]);
     }
+
+    public static function typeName(int $type) : string
+    {
+        return Util::ucFirst(self::game(Type::getFileString($type)));
+    }
+
 
     private static function vspf($var, $args)
     {

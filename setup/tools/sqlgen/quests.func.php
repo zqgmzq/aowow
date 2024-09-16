@@ -31,7 +31,7 @@ SqlGen::register(new class extends SetupScript
                 IFNULL(gesqr.eventEntry, 0) AS eventId,
                 IFNULL(qa.PrevQuestId, 0),
                 IFNULL(qa.NextQuestId, 0),
-                IFNULL(qa.BreadcrumbForQuestId, 0),
+                0 AS BreadcrumbForQuestId, -- IFNULL(qa.BreadcrumbForQuestId, 0),
                 IFNULL(qa.ExclusiveGroup, 0),
                 RewardNextQuest,
                 q.Flags,
@@ -53,7 +53,7 @@ SqlGen::register(new class extends SetupScript
                 IFNULL(qa.SourceSpellId, 0),
                 RewardXPDifficulty,                             -- QuestXP.dbc x level
                 RewardMoney,
-                RewardBonusMoney,
+                0 AS RewardBonusMoney,
                 RewardDisplaySpell,                 RewardSpell,
                 RewardHonor * 124 * RewardKillHonor,            -- alt calculation in QuestDef.cpp -> Quest::CalculateHonorGain(playerLevel)
                 IFNULL(qa.RewardMailTemplateId, 0), IFNULL(qa.RewardMailDelay, 0),
@@ -259,6 +259,8 @@ SqlGen::register(new class extends SetupScript
         DB::Aowow()->query('UPDATE ?_quests SET zoneOrSort = ?d WHERE id IN (?a){ AND id IN (?a)}',  -101, [8228, 8229], $ids ?: DBSIMPLE_SKIP);
         // dungeon quests to Misc/Dungeon Finder
         DB::Aowow()->query('UPDATE ?_quests SET zoneOrSort = ?d WHERE (specialFlags & ?d OR id IN (?a)){ AND id IN (?a)}', -1010, QUEST_FLAG_SPECIAL_DUNGEON_FINDER, [24789, 24791, 24923], $ids ?: DBSIMPLE_SKIP);
+
+        $this->reapplyCCFlags('quests', Type::QUEST);
 
         return true;
     }

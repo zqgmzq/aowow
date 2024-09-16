@@ -14,6 +14,25 @@ class Game
         '9d9d9d',       'ffffff',       '1eff00',       '0070dd',       'a335ee',       'ff8000',       'e5cc80',       'e6cc80'
     );
 
+    public static $specIconStrings          = array(
+        -1 =>  'inv_misc_questionmark',
+         0 =>  'spell_nature_elementalabsorption',
+         6 => ['spell_deathknight_bloodpresence', 'spell_deathknight_frostpresence', 'spell_deathknight_unholypresence' ],
+        11 => ['spell_nature_starfall',           'ability_racial_bearform',         'spell_nature_healingtouch'        ],
+         3 => ['ability_hunter_beasttaming',      'ability_marksmanship',            'ability_hunter_swiftstrike'       ],
+         8 => ['spell_holy_magicalsentry',        'spell_fire_firebolt02',           'spell_frost_frostbolt02'          ],
+         2 => ['spell_holy_holybolt',             'spell_holy_devotionaura',         'spell_holy_auraoflight'           ],
+         5 => ['spell_holy_wordfortitude',        'spell_holy_holybolt',             'spell_shadow_shadowwordpain'      ],
+         4 => ['ability_rogue_eviscerate',        'ability_backstab',                'ability_stealth'                  ],
+         7 => ['spell_nature_lightning',          'spell_nature_lightningshield',    'spell_nature_magicimmunity'       ],
+         9 => ['spell_shadow_deathcoil',          'spell_shadow_metamorphosis',      'spell_shadow_rainoffire'          ],
+         1 => ['ability_rogue_eviscerate',        'ability_warrior_innerrage',       'ability_warrior_defensivestance'  ]
+    );
+
+    public static $classFileStrings         = array(
+        null,   'warrior', 'paladin', 'hunter', 'rogue', 'priest', 'deathknight', 'shaman', 'mage', 'warlock', null, 'druid'
+    );
+
     private static $combatRatingToItemMod    = array(        // zero-indexed idx:CR; val:Mod
         null,           12,             13,             14,             15,             16,             17,             18,             19,
         20,             21,             22,             23,             24,             25,             26,             27,             28,
@@ -58,6 +77,38 @@ class Game
         ),
         -3 => array(                                        // Ranged Weapons
             [null, 45],         [null, 46],         [null, 226]                                                                                 // Bow,         Gun,         Crossbow
+        )
+    );
+
+    public static $trainerTemplates         = array(        // TYPE => Id => templateList
+        Type::CHR_CLASS => array(
+              1 => [-200001, -200002],                      // Warrior
+              2 => [-200003, -200004, -200020, -200021],    // Paladin
+              3 => [-200013, -200014],                      // Hunter
+              4 => [-200015, -200016],                      // Rogue
+              5 => [-200011, -200012],                      // Priest
+              6 => [-200019],                               // DK
+              7 => [-200017, -200018],                      // Shaman (HighlevelAlly Id missing..?)
+              8 => [-200007, -200008],                      // Mage
+              9 => [-200009, -200010],                      // Warlock
+             11 => [-200005, -200006]                       // Druid
+        ),
+        Type::SKILL => array(
+            171 => [-201001, -201002, -201003],             // Alchemy
+            164 => [-201004, -201005, -201006, -201007, -201008],// Blacksmithing
+            333 => [-201009, -201010, -201011],             // Enchanting
+            202 => [-201012, -201013, -201014, -201015, -201016, -201017], // Engineering
+            182 => [-201018, -201019, -201020],             // Herbalism
+            773 => [-201021, -201022, -201023],             // Inscription
+            755 => [-201024, -201025, -201026],             // Jewelcrafting
+            165 => [-201027, -201028, -201029, -201030, -201031, -201032], // Leatherworking
+            186 => [-201033, -201034, -201035],             // Mining
+            393 => [-201036, -201037, -201038],             // Skinning
+            197 => [-201039, -201040, -201041, -201042],    // Tailoring
+            356 => [-202001, -202002, -202003],             // Fishing
+            185 => [-202004, -202005, -202006],             // Cooking
+            129 => [-202007, -202008, -202009],             // First Aid
+            762 => [-202010, -202011, -202012]              // Riding
         )
     );
 
@@ -210,22 +261,91 @@ class Game
         return $pages;
     }
 
+
+    /*********************/
+    /* World Pos. Checks */
+    /*********************/
+
+    private static $alphaMapCache = [];
+
+    private static function alphaMapCheck(int $areaId, array &$set) : bool
+    {
+        $file = 'setup/generated/alphaMaps/'.$areaId.'.png';
+        if (!file_exists($file))                            // file does not exist (probably instanced area)
+            return false;
+
+        // invalid and corner cases (literally)
+        if (!is_array($set) || empty($set['posX']) || empty($set['posY']) || $set['posX'] >= 100 || $set['posY'] >= 100)
+        {
+            $set = null;
+            return true;
+        }
+
+        if (empty(self::$alphaMapCache[$areaId]))
+        self::$alphaMapCache[$areaId] = imagecreatefrompng($file);
+
+        // alphaMaps are 1000 x 1000, adapt points [black => valid point]
+        if (!imagecolorat(self::$alphaMapCache[$areaId], $set['posX'] * 10, $set['posY'] * 10))
+            $set = null;
+
+        return true;
+    }
+
+    public static function checkCoords(array $points) : array
+    {
+        $result   = [];
+        $capitals = array(                                  // capitals take precedence over their surroundings
+            1497, 1637, 1638, 3487,                         // Undercity,      Ogrimmar,  Thunder Bluff, Silvermoon City
+            1519, 1537, 1657, 3557,                         // Stormwind City, Ironforge, Darnassus,     The Exodar
+            3703, 4395                                      // Shattrath City, Dalaran
+        );
+
+        foreach ($points as $res)
+        {
+            if (self::alphaMapCheck($res['areaId'], $res))
+            {
+                if (!$res)
+                    continue;
+
+                // some rough measure how central the spawn is on the map (the lower the number, the better)
+                // 0: perfect center; 1: touches a border
+                $q = abs( (($res['posX'] - 50) / 50) * (($res['posY'] - 50) / 50) );
+
+                if (empty($result) || $result[0] > $q)
+                    $result = [$q, $res];
+            }
+            else if (in_array($res['areaId'], $capitals))   // capitals (auto-discovered) and no hand-made alphaMap available
+                return $res;
+            else if (empty($result))                        // add with lowest quality if alpha map is missing
+                $result = [1.0, $res];
+        }
+
+        // spawn does not really match on a map, but we need at least one result
+        if (!$result)
+        {
+            usort($points, function ($a, $b) { return ($a['dist'] < $b['dist']) ? -1 : 1; });
+            $result = [1.0, $points[0]];
+        }
+
+        return $result[1];
+    }
+
     public static function getWorldPosForGUID(int $type, int ...$guids) : array
     {
         $result = [];
 
         switch ($type)
         {
-            case TYPE_NPC:
-                $result = DB::World()->select('SELECT `guid` AS ARRAY_KEY, `id`, `map` AS `mapId`, `position_y` AS `posX`, `position_x` AS `posY` FROM creature WHERE `guid` IN (?a)', $guids);
+            case Type::NPC:
+                $result = DB::World()->select('SELECT `guid` AS ARRAY_KEY, `id1`, `map` AS `mapId`, `position_y` AS `posX`, `position_x` AS `posY` FROM creature WHERE `guid` IN (?a)', $guids);
                 break;
-            case TYPE_OBJECT:
+            case Type::OBJECT:
                 $result = DB::World()->select('SELECT `guid` AS ARRAY_KEY, `id`, `map` AS `mapId`, `position_y` AS `posX`, `position_x` AS `posY` FROM gameobject WHERE `guid` IN (?a)', $guids);
                 break;
-            case TYPE_SOUND:
+            case Type::SOUND:
                 $result = DB::AoWoW()->select('SELECT `soundId` AS ARRAY_KEY, `soundId` AS `id`, `mapId`, `posX`, `posY` FROM dbc_soundemitters WHERE `soundId` IN (?a)', $guids);
                 break;
-            case TYPE_AREATRIGGER:
+            case Type::AREATRIGGER:
                 $result = DB::AoWoW()->select('SELECT `id` AS ARRAY_KEY, `id`, `mapId`, `posX`, `posY` FROM dbc_areatrigger WHERE `id` IN (?a)', $guids);
                 break;
             default:
@@ -285,8 +405,8 @@ class Game
                 ct.`Type` AS `talkType`,
                 ct.TextRange AS `range`,
                 IFNULL(bct.`LanguageID`, ct.`Language`) AS lang,
-                IFNULL(NULLIF(bct.Text, ""), IFNULL(NULLIF(bct.Text1, ""), IFNULL(ct.`Text`, ""))) AS text_loc0,
-               {IFNULL(NULLIF(bctl.Text, ""), IFNULL(NULLIF(bctl.Text1, ""), IFNULL(ctl.Text, ""))) AS text_loc?d,}
+                IFNULL(NULLIF(bct.MaleText, ""), IFNULL(NULLIF(bct.FemaleText, ""), IFNULL(ct.`Text`, ""))) AS text_loc0,
+               {IFNULL(NULLIF(bctl.MaleText, ""), IFNULL(NULLIF(bctl.FemaleText, ""), IFNULL(ctl.Text, ""))) AS text_loc?d,}
                 IF(bct.SoundEntriesID > 0, bct.SoundEntriesID, ct.Sound) AS soundId
             FROM
                 creature_text ct
@@ -398,5 +518,3 @@ class Game
         }
     }
 }
-
-?>
